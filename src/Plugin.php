@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace JoyOfCode\LocalKnowledge;
 
+use JoyOfCode\LocalKnowledge\Admin\GamePostType;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -20,6 +22,7 @@ final class Plugin {
 	 * Initialize the plugin.
 	 */
 	public function run(): void {
-		// Foundation only. Hooks and services register here in later milestones.
+		$game_post_type = new GamePostType();
+		add_action( 'init', array( $game_post_type, 'register' ) );
 	}
 }
