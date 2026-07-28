@@ -11,7 +11,9 @@ namespace JoyOfCode\LocalKnowledge;
 
 use JoyOfCode\LocalKnowledge\Admin\GameEditor;
 use JoyOfCode\LocalKnowledge\Admin\GamePostType;
+use JoyOfCode\LocalKnowledge\Admin\GamePreview;
 use JoyOfCode\LocalKnowledge\Admin\GameValidator;
+use JoyOfCode\LocalKnowledge\Frontend\GameRoute;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -32,5 +34,11 @@ final class Plugin {
 
 		$game_validator = new GameValidator();
 		$game_validator->register();
+
+		$game_preview = new GamePreview();
+		$game_preview->register();
+
+		$game_route = new GameRoute();
+		$game_route->register();
 	}
 }

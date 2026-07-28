@@ -1,0 +1,122 @@
+.lk-game-screen {
+	margin: 0;
+	font-family: Georgia, "Times New Roman", serif;
+	color: #1d2327;
+	background: #f0f0f1;
+}
+
+.lk-game {
+	box-sizing: border-box;
+	width: min(100% - 2rem, 40rem);
+	margin: 1.5rem auto 3rem;
+	padding: 1.5rem;
+	background: #fff;
+	border: 1px solid #c3c4c7;
+}
+
+.lk-game__preview-notice {
+	margin: 0 0 1.25rem;
+	padding: 0.75rem 1rem;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	font-size: 0.95rem;
+	line-height: 1.4;
+	color: #1d2327;
+	background: #fcf9e8;
+	border: 1px solid #dba617;
+}
+
+.lk-game__header {
+	margin-bottom: 1.25rem;
+	text-align: center;
+}
+
+.lk-game__title {
+	margin: 0;
+	font-size: clamp(1.5rem, 4vw, 2rem);
+	line-height: 1.2;
+}
+
+.lk-game__image-frame {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	width: 100%;
+	aspect-ratio: 4 / 3;
+	margin: 0 0 1.5rem;
+	padding: 0.75rem;
+	overflow: hidden;
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	box-sizing: border-box;
+}
+
+.lk-game__image {
+	display: block;
+	width: 100%;
+	height: 100%;
+	object-fit: contain;
+	object-position: center;
+}
+
+.lk-game__form {
+	margin: 0;
+}
+
+.lk-game__choices {
+	margin: 0 0 1.25rem;
+	padding: 0;
+	border: 0;
+}
+
+.lk-game__choices-legend {
+	margin: 0 0 0.75rem;
+	padding: 0;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	font-size: 1rem;
+	font-weight: 600;
+}
+
+.lk-game__choice {
+	display: flex;
+	align-items: flex-start;
+	gap: 0.6rem;
+	margin: 0 0 0.75rem;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	font-size: 1rem;
+	line-height: 1.4;
+}
+
+.lk-game__choice input[type="radio"] {
+	margin-top: 0.2rem;
+	flex-shrink: 0;
+}
+
+.lk-game__choice label {
+	cursor: pointer;
+}
+
+.lk-game__submit {
+	display: inline-block;
+	padding: 0.65rem 1.25rem;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	font-size: 1rem;
+	font-weight: 600;
+	line-height: 1.2;
+	color: #fff;
+	cursor: default;
+	background: #2271b1;
+	border: 1px solid #2271b1;
+	border-radius: 3px;
+}
+
+@media (max-width: 480px) {
+	.lk-game {
+		width: min(100% - 1rem, 40rem);
+		margin-top: 1rem;
+		padding: 1rem;
+	}
+
+	.lk-game__image-frame {
+		aspect-ratio: 1 / 1;
+	}
+}

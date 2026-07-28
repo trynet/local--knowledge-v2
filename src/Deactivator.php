@@ -9,6 +9,8 @@ declare(strict_types=1);
 
 namespace JoyOfCode\LocalKnowledge;
 
+use JoyOfCode\LocalKnowledge\Frontend\GameRoute;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -19,9 +21,10 @@ final class Deactivator {
 	/**
 	 * Handle plugin deactivation.
 	 *
-	 * Currently performs no cleanup. Reserved for future reversible
-	 * teardown that does not delete plugin or user data.
+	 * Flushes rewrite rules so plugin routes are removed. Does not delete
+	 * Game content or other plugin data.
 	 */
 	public static function deactivate(): void {
+		GameRoute::deactivate_rewrites();
 	}
 }

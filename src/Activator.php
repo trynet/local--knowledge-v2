@@ -9,6 +9,9 @@ declare(strict_types=1);
 
 namespace JoyOfCode\LocalKnowledge;
 
+use JoyOfCode\LocalKnowledge\Admin\GamePostType;
+use JoyOfCode\LocalKnowledge\Frontend\GameRoute;
+
 defined( 'ABSPATH' ) || exit;
 
 /**
@@ -32,8 +35,10 @@ final class Activator {
 	public static function activate(): void {
 		self::verify_environment();
 
-		// Rewrite rules are not flushed here until custom rewrite-capable
-		// content types are registered in a later milestone.
+		$game_post_type = new GamePostType();
+		$game_post_type->register();
+
+		GameRoute::activate_rewrites();
 	}
 
 	/**
