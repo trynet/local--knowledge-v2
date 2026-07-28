@@ -11,6 +11,7 @@ namespace JoyOfCode\LocalKnowledge;
 
 use JoyOfCode\LocalKnowledge\Admin\GameEditor;
 use JoyOfCode\LocalKnowledge\Admin\GamePostType;
+use JoyOfCode\LocalKnowledge\Admin\GameValidator;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -28,5 +29,8 @@ final class Plugin {
 
 		$game_editor = new GameEditor();
 		$game_editor->register();
+
+		$game_validator = new GameValidator();
+		$game_validator->register();
 	}
 }
