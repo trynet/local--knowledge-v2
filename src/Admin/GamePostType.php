@@ -68,7 +68,7 @@ final class GamePostType {
 			'rewrite'             => false,
 			'query_var'           => false,
 			'menu_icon'           => 'dashicons-location-alt',
-			'supports'            => array( 'title', 'editor' ),
+			'supports'            => array( 'title' ),
 		);
 	}
 }
