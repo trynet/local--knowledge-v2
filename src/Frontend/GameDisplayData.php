@@ -147,17 +147,37 @@ final class GameDisplayData {
 	}
 
 	/**
-	 * Get the attachment ID for an image slot (1–4).
+	 * Map an image stage (1–4) to its post meta key.
+	 *
+	 * @param int $stage Image stage.
+	 */
+	public function get_image_meta_key_for_stage( int $stage ): string {
+		$map = array(
+			1 => self::META_KEYS['image_1_id'],
+			2 => self::META_KEYS['image_2_id'],
+			3 => self::META_KEYS['image_3_id'],
+			4 => self::META_KEYS['image_4_id'],
+		);
+
+		return $map[ $stage ] ?? '';
+	}
+
+	/**
+	 * Get the attachment ID for an image stage/slot (1–4).
+	 *
+	 * Stage 1 → `_lk_image_1_id`, stage 2 → `_lk_image_2_id`, etc.
 	 *
 	 * @param int $game_id Game post ID.
-	 * @param int $slot    Image slot number.
+	 * @param int $slot    Image stage number.
 	 */
 	public function get_image_id_for_slot( int $game_id, int $slot ): int {
-		if ( $slot < 1 || $slot > 4 ) {
+		$meta_key = $this->get_image_meta_key_for_stage( $slot );
+
+		if ( '' === $meta_key ) {
 			return 0;
 		}
 
-		return absint( get_post_meta( $game_id, self::META_KEYS[ 'image_' . $slot . '_id' ], true ) );
+		return absint( get_post_meta( $game_id, $meta_key, true ) );
 	}
 
 	/**

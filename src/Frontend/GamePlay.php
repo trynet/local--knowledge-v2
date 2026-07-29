@@ -14,11 +14,10 @@ use JoyOfCode\LocalKnowledge\Admin\GamePostType;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Evaluates public Game answer submissions on the server.
+ * Evaluates public Game answer submissions using server-side temporary state.
  *
- * Milestone 6B carries the current image stage through the active request
- * via a signed flash token and a signed stage proof in the form.
- * No cookies, transients, sessions, or permanent storage.
+ * Image stage and completion are authoritative in GameState transients.
+ * A short-lived signed flash token carries feedback across redirect-after-POST only.
  */
 final class GamePlay {
 
@@ -28,19 +27,26 @@ final class GamePlay {
 	public const FORM_ACTION = 'lk_game_submit';
 
 	/**
-	 * Query var carrying the one-time signed result token.
+	 * Query var carrying the one-time signed feedback token.
 	 */
 	public const FLASH_QUERY_VAR = 'lk_msg';
 
 	/**
-	 * Flash token lifetime in seconds (result redirect only).
+	 * Flash token lifetime in seconds.
 	 */
 	private const FLASH_TTL = 60;
 
 	/**
-	 * Stage-proof lifetime in seconds (active form only; reload still resets).
+	 * Temporary state manager.
 	 */
-	private const STAGE_PROOF_TTL = 12 * HOUR_IN_SECONDS;
+	private GameState $state_store;
+
+	/**
+	 * Constructor.
+	 */
+	public function __construct( ?GameState $state_store = null ) {
+		$this->state_store = $state_store ?? new GameState();
+	}
 
 	/**
 	 * Wire hooks. Submission is handled during public Game routing.
@@ -72,20 +78,10 @@ final class GamePlay {
 		$token  = $this->encode_flash_token(
 			$game_id,
 			(string) $result['feedback'],
-			(string) $result['selected_choice'],
-			(int) $result['image_stage']
+			(string) $result['selected_choice']
 		);
 
-		$url = GameRoute::get_public_url( $game_number );
-
-		if ( '' === $url ) {
-			$url = home_url( '/' );
-		}
-
-		$redirect = add_query_arg( self::FLASH_QUERY_VAR, $token, $url );
-
-		wp_safe_redirect( $redirect, 303 );
-		exit;
+		$this->redirect_with_flash( $game_number, $token );
 	}
 
 	/**
@@ -96,35 +92,35 @@ final class GamePlay {
 	 * @return array<string, mixed>
 	 */
 	public function get_view_extras( int $game_id, int $game_number ): array {
+		$state  = $this->state_store->get_public_state( $game_id );
 		$extras = $this->default_view_extras( $game_id );
+
 		$extras['clean_game_url'] = GameRoute::get_public_url( $game_number );
+		$extras['image_stage']    = (int) $state['image_stage'];
+		$extras['game_locked']    = ! empty( $state['ended'] ) && 'correct' === $state['result_type'];
 
-		$flash = $this->decode_flash_from_request( $game_id );
-
-		if ( null === $flash ) {
-			$extras['image_stage'] = 1;
-			$extras['stage_token'] = $this->encode_stage_token( $game_id, 1 );
-			return $extras;
-		}
-
-		$feedback = (string) $flash['feedback'];
-		$choice   = (string) $flash['selected_choice'];
-		$stage    = (int) $flash['image_stage'];
-
-		$extras['feedback']             = $feedback;
-		$extras['selected_choice']      = $choice;
-		$extras['image_stage']          = $stage;
-		$extras['stage_token']          = $this->encode_stage_token( $game_id, $stage );
-		$extras['strip_flash_from_url'] = true;
-
-		if ( 'correct' === $feedback ) {
+		if ( $extras['game_locked'] ) {
 			$display = new GameDisplayData();
 			$key     = $display->get_correct_location_key( $game_id );
 
-			$extras['game_locked'] = true;
-
 			if ( '' !== $key ) {
 				$extras['correct_location_label'] = $display->get_location_label( $game_id, $key );
+			}
+
+			// Completed Games show the success message on every revisit.
+			$extras['feedback'] = 'correct';
+		}
+
+		$flash = $this->decode_flash_from_request( $game_id );
+
+		if ( null !== $flash ) {
+			$extras['feedback']             = (string) $flash['feedback'];
+			$extras['selected_choice']      = (string) $flash['selected_choice'];
+			$extras['strip_flash_from_url'] = true;
+
+			// Do not let a stale flash unlock a completed Game UI.
+			if ( $extras['game_locked'] ) {
+				$extras['feedback'] = 'correct';
 			}
 		}
 
@@ -132,17 +128,16 @@ final class GamePlay {
 	}
 
 	/**
-	 * Evaluate a POST submission and return safe result fields.
+	 * Evaluate a POST submission against server-side temporary state.
 	 *
 	 * @param int $game_id     Published Game post ID.
 	 * @param int $game_number Expected Game Number from the route.
-	 * @return array{feedback: string, selected_choice: string, image_stage: int}
+	 * @return array{feedback: string, selected_choice: string}
 	 */
 	private function evaluate_submission( int $game_id, int $game_number ): array {
 		$result = array(
 			'feedback'        => 'invalid_game',
 			'selected_choice' => '',
-			'image_stage'     => 1,
 		);
 
 		$posted_game_id = isset( $_POST['lk_game_id'] ) ? absint( wp_unslash( $_POST['lk_game_id'] ) ) : 0;
@@ -181,8 +176,16 @@ final class GamePlay {
 			return $result;
 		}
 
-		$stage = $this->resolve_submitted_stage( $game_id );
-		$result['image_stage'] = $stage;
+		$state = $this->state_store->get_public_state( $game_id );
+
+		// Completed Games reject further submissions on the server.
+		if ( ! empty( $state['ended'] ) && 'correct' === $state['result_type'] ) {
+			$result['feedback'] = 'already_ended';
+			$this->state_store->save_public_state( $state );
+			return $result;
+		}
+
+		$stage = (int) $state['image_stage'];
 
 		$choice = isset( $_POST['lk_location'] )
 			? sanitize_text_field( wp_unslash( (string) $_POST['lk_location'] ) )
@@ -192,12 +195,14 @@ final class GamePlay {
 
 		if ( '' === $choice ) {
 			$result['feedback'] = 'missing';
+			$this->state_store->save_public_state( $state );
 			return $result;
 		}
 
 		if ( ! in_array( $choice, array( '1', '2', '3', '4' ), true ) ) {
 			$result['feedback']        = 'invalid_choice';
 			$result['selected_choice'] = '';
+			$this->state_store->save_public_state( $state );
 			return $result;
 		}
 
@@ -209,72 +214,83 @@ final class GamePlay {
 		}
 
 		if ( $choice === $correct ) {
-			// Keep the currently displayed image.
-			$result['feedback']    = 'correct';
-			$result['image_stage'] = $stage;
+			// Correct: keep the current stage unchanged and lock the Game.
+			$state['image_stage'] = $stage;
+			$state['ended']       = true;
+			$state['result_type'] = 'correct';
+			$this->state_store->save_public_state( $state );
+
+			$result['feedback'] = 'correct';
 			return $result;
 		}
 
-		// Incorrect: advance 1→2→3→4; remain on 4 thereafter.
-		$result['feedback']    = 'incorrect';
-		$result['image_stage'] = $stage < 4 ? $stage + 1 : 4;
+		// Incorrect: advance 1→2→3→4, then stay on 4.
+		$next_stage = match ( $stage ) {
+			1       => 2,
+			2       => 3,
+			3       => 4,
+			default => 4,
+		};
+
+		$state['image_stage'] = $next_stage;
+		$state['ended']       = false;
+		$state['result_type'] = '';
+		$this->state_store->save_public_state( $state );
+
+		$result['feedback'] = 'incorrect';
 		return $result;
 	}
 
 	/**
-	 * Resolve the submitted image stage using the signed stage proof.
+	 * Redirect to the public Game URL with a feedback flash token.
 	 *
-	 * The hidden field alone is not trusted: the signed proof must match.
-	 *
-	 * @param int $game_id Game post ID.
+	 * @param int    $game_number Game Number.
+	 * @param string $token       Signed flash token.
 	 */
-	private function resolve_submitted_stage( int $game_id ): int {
-		$posted_stage = isset( $_POST['lk_image_stage'] )
-			? absint( wp_unslash( $_POST['lk_image_stage'] ) )
-			: 1;
+	private function redirect_with_flash( int $game_number, string $token ): void {
+		$url = GameRoute::get_public_url( $game_number );
 
-		if ( $posted_stage < 1 || $posted_stage > 4 ) {
-			return 1;
+		if ( '' === $url ) {
+			$url = home_url( '/' );
 		}
 
-		$token = isset( $_POST['lk_stage_token'] )
-			? sanitize_text_field( wp_unslash( (string) $_POST['lk_stage_token'] ) )
-			: '';
+		$redirect = add_query_arg( self::FLASH_QUERY_VAR, $token, $url );
 
-		$proven = $this->decode_stage_token( $token, $game_id );
-
-		if ( null === $proven || $proven !== $posted_stage ) {
-			return 1;
-		}
-
-		return $posted_stage;
+		wp_safe_redirect( $redirect, 303 );
+		exit;
 	}
 
 	/**
-	 * Encode a short-lived signed flash token (no correct-answer key).
+	 * Encode a short-lived signed flash token (feedback only).
 	 *
 	 * @param int    $game_id  Game post ID.
 	 * @param string $feedback Feedback code.
 	 * @param string $choice   Selected choice 1–4 or empty.
-	 * @param int    $stage    Image stage to display (1–4).
 	 */
-	private function encode_flash_token( int $game_id, string $feedback, string $choice, int $stage ): string {
+	private function encode_flash_token( int $game_id, string $feedback, string $choice ): string {
 		$payload = array(
 			'g' => $game_id,
 			'f' => $feedback,
 			'c' => $choice,
-			'i' => max( 1, min( 4, $stage ) ),
 			'e' => time() + self::FLASH_TTL,
 		);
 
-		return $this->sign_payload( $payload );
+		$body = wp_json_encode( $payload );
+
+		if ( ! is_string( $body ) ) {
+			$body = '{}';
+		}
+
+		$signature = hash_hmac( 'sha256', $body, wp_salt( 'nonce' ) );
+
+		return base64_encode( $body ) . '.' . $signature;
 	}
 
 	/**
 	 * Decode and validate a flash token from the current GET request.
 	 *
 	 * @param int $game_id Expected Game post ID.
-	 * @return array{feedback: string, selected_choice: string, image_stage: int}|null
+	 * @return array{feedback: string, selected_choice: string}|null
 	 */
 	private function decode_flash_from_request( int $game_id ): ?array {
 		if ( ! isset( $_GET[ self::FLASH_QUERY_VAR ] ) ) {
@@ -282,9 +298,32 @@ final class GamePlay {
 		}
 
 		$raw = sanitize_text_field( wp_unslash( (string) $_GET[ self::FLASH_QUERY_VAR ] ) );
-		$data = $this->verify_signed_payload( $raw );
 
-		if ( null === $data ) {
+		if ( '' === $raw || ! str_contains( $raw, '.' ) ) {
+			return null;
+		}
+
+		[$encoded_body, $signature] = explode( '.', $raw, 2 );
+
+		if ( '' === $encoded_body || '' === $signature ) {
+			return null;
+		}
+
+		$body = base64_decode( $encoded_body, true );
+
+		if ( ! is_string( $body ) || '' === $body ) {
+			return null;
+		}
+
+		$expected = hash_hmac( 'sha256', $body, wp_salt( 'nonce' ) );
+
+		if ( ! hash_equals( $expected, $signature ) ) {
+			return null;
+		}
+
+		$data = json_decode( $body, true );
+
+		if ( ! is_array( $data ) ) {
 			return null;
 		}
 
@@ -292,7 +331,6 @@ final class GamePlay {
 		$expires       = isset( $data['e'] ) ? absint( $data['e'] ) : 0;
 		$feedback      = isset( $data['f'] ) ? sanitize_key( (string) $data['f'] ) : '';
 		$choice        = isset( $data['c'] ) ? sanitize_text_field( (string) $data['c'] ) : '';
-		$stage         = isset( $data['i'] ) ? absint( $data['i'] ) : 1;
 
 		if ( $token_game_id !== $game_id || $expires < time() || '' === $feedback ) {
 			return null;
@@ -305,6 +343,7 @@ final class GamePlay {
 			'invalid_choice',
 			'invalid_nonce',
 			'invalid_game',
+			'already_ended',
 		);
 
 		if ( ! in_array( $feedback, $allowed_feedback, true ) ) {
@@ -315,118 +354,10 @@ final class GamePlay {
 			$choice = '';
 		}
 
-		if ( $stage < 1 || $stage > 4 ) {
-			$stage = 1;
-		}
-
 		return array(
 			'feedback'        => $feedback,
 			'selected_choice' => $choice,
-			'image_stage'     => $stage,
 		);
-	}
-
-	/**
-	 * Encode a signed stage proof for the playable form.
-	 *
-	 * @param int $game_id Game post ID.
-	 * @param int $stage   Image stage 1–4.
-	 */
-	private function encode_stage_token( int $game_id, int $stage ): string {
-		$payload = array(
-			'g' => $game_id,
-			'i' => max( 1, min( 4, $stage ) ),
-			'e' => time() + self::STAGE_PROOF_TTL,
-			't' => 'stage',
-		);
-
-		return $this->sign_payload( $payload );
-	}
-
-	/**
-	 * Decode a signed stage proof.
-	 *
-	 * @param string $token   Raw token.
-	 * @param int    $game_id Expected Game post ID.
-	 */
-	private function decode_stage_token( string $token, int $game_id ): ?int {
-		$data = $this->verify_signed_payload( $token );
-
-		if ( null === $data ) {
-			return null;
-		}
-
-		if ( ( $data['t'] ?? '' ) !== 'stage' ) {
-			return null;
-		}
-
-		$token_game_id = isset( $data['g'] ) ? absint( $data['g'] ) : 0;
-		$expires       = isset( $data['e'] ) ? absint( $data['e'] ) : 0;
-		$stage         = isset( $data['i'] ) ? absint( $data['i'] ) : 0;
-
-		if ( $token_game_id !== $game_id || $expires < time() || $stage < 1 || $stage > 4 ) {
-			return null;
-		}
-
-		return $stage;
-	}
-
-	/**
-	 * Sign a payload array into a transport token.
-	 *
-	 * @param array<string, mixed> $payload Payload data.
-	 */
-	private function sign_payload( array $payload ): string {
-		$body = wp_json_encode( $payload );
-
-		if ( ! is_string( $body ) ) {
-			$body = '{}';
-		}
-
-		$signature = hash_hmac( 'sha256', $body, $this->token_secret() );
-
-		return base64_encode( $body ) . '.' . $signature;
-	}
-
-	/**
-	 * Verify a signed transport token and return the payload.
-	 *
-	 * @param string $token Raw token.
-	 * @return array<string, mixed>|null
-	 */
-	private function verify_signed_payload( string $token ): ?array {
-		if ( '' === $token || ! str_contains( $token, '.' ) ) {
-			return null;
-		}
-
-		[$encoded_body, $signature] = explode( '.', $token, 2 );
-
-		if ( '' === $encoded_body || '' === $signature ) {
-			return null;
-		}
-
-		$body = base64_decode( $encoded_body, true );
-
-		if ( ! is_string( $body ) || '' === $body ) {
-			return null;
-		}
-
-		$expected = hash_hmac( 'sha256', $body, $this->token_secret() );
-
-		if ( ! hash_equals( $expected, $signature ) ) {
-			return null;
-		}
-
-		$data = json_decode( $body, true );
-
-		return is_array( $data ) ? $data : null;
-	}
-
-	/**
-	 * Secret used to sign flash and stage tokens.
-	 */
-	private function token_secret(): string {
-		return wp_salt( 'nonce' );
 	}
 
 	/**
@@ -449,7 +380,6 @@ final class GamePlay {
 			'clean_game_url'         => '',
 			'strip_flash_from_url'   => false,
 			'image_stage'            => 1,
-			'stage_token'            => '',
 		);
 	}
 

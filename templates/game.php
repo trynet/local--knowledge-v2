@@ -18,7 +18,6 @@
  * - bool   $game_locked
  * - string $correct_location_label
  * - int    $image_stage
- * - string $stage_token
  *
  * @package JoyOfCode\LocalKnowledge
  */
@@ -39,7 +38,6 @@ $nonce_action           = isset( $nonce_action ) ? (string) $nonce_action : '';
 $nonce_field            = isset( $nonce_field ) ? (string) $nonce_field : '';
 $form_action_value      = isset( $form_action_value ) ? (string) $form_action_value : '';
 $image_stage            = isset( $image_stage ) ? max( 1, min( 4, (int) $image_stage ) ) : 1;
-$stage_token            = isset( $stage_token ) ? (string) $stage_token : '';
 ?>
 <main class="lk-game">
 	<?php if ( $is_preview ) : ?>
@@ -111,8 +109,6 @@ $stage_token            = isset( $stage_token ) ? (string) $stage_token : '';
 		<form class="lk-game__form" method="post" action="">
 			<input type="hidden" name="lk_game_action" value="<?php echo esc_attr( $form_action_value ); ?>" />
 			<input type="hidden" name="lk_game_id" value="<?php echo esc_attr( (string) $game_id ); ?>" />
-			<input type="hidden" name="lk_image_stage" value="<?php echo esc_attr( (string) $image_stage ); ?>" />
-			<input type="hidden" name="lk_stage_token" value="<?php echo esc_attr( $stage_token ); ?>" />
 			<?php wp_nonce_field( $nonce_action, $nonce_field ); ?>
 
 			<fieldset class="lk-game__choices">

@@ -146,14 +146,19 @@ final class GameRoute {
 			return;
 		}
 
+		// Prevent browsers from serving a cached Image 1 page after gameplay advances.
+		nocache_headers();
+
 		$play = new GamePlay();
 		$play->maybe_redirect_after_post( $game_id, $game_number );
 
 		$extras = $play->get_view_extras( $game_id, $game_number );
-		$stage  = isset( $extras['image_stage'] ) ? absint( $extras['image_stage'] ) : 1;
+		$stage  = isset( $extras['image_stage'] ) ? max( 1, min( 4, absint( $extras['image_stage'] ) ) ) : 1;
 
-		$view = $display->build_view( $game_id, false, $stage );
-		$view = array_merge( $view, $extras );
+		// Resolve the image for the saved stage, then merge play extras (stage wins).
+		$view                = $display->build_view( $game_id, false, $stage );
+		$view                = array_merge( $view, $extras );
+		$view['image_stage'] = $stage;
 
 		$renderer = new GameRenderer();
 		$renderer->render( $view );

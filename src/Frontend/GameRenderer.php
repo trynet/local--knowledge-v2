@@ -48,7 +48,6 @@ final class GameRenderer {
 		$clean_game_url         = $prepared['clean_game_url'];
 		$strip_flash_from_url   = $prepared['strip_flash_from_url'];
 		$image_stage            = $prepared['image_stage'];
-		$stage_token            = $prepared['stage_token'];
 
 		?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -191,7 +190,6 @@ final class GameRenderer {
 			'clean_game_url'         => isset( $view['clean_game_url'] ) ? esc_url_raw( (string) $view['clean_game_url'] ) : '',
 			'strip_flash_from_url'   => ! empty( $view['strip_flash_from_url'] ),
 			'image_stage'            => isset( $view['image_stage'] ) ? max( 1, min( 4, absint( $view['image_stage'] ) ) ) : 1,
-			'stage_token'            => isset( $view['stage_token'] ) ? sanitize_text_field( (string) $view['stage_token'] ) : '',
 		);
 	}
 
