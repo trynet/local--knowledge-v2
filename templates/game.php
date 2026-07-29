@@ -17,6 +17,8 @@
  * - string $selected_choice
  * - bool   $game_locked
  * - string $correct_location_label
+ * - int    $image_stage
+ * - string $stage_token
  *
  * @package JoyOfCode\LocalKnowledge
  */
@@ -36,6 +38,8 @@ $game_id                = isset( $game_id ) ? (int) $game_id : 0;
 $nonce_action           = isset( $nonce_action ) ? (string) $nonce_action : '';
 $nonce_field            = isset( $nonce_field ) ? (string) $nonce_field : '';
 $form_action_value      = isset( $form_action_value ) ? (string) $form_action_value : '';
+$image_stage            = isset( $image_stage ) ? max( 1, min( 4, (int) $image_stage ) ) : 1;
+$stage_token            = isset( $stage_token ) ? (string) $stage_token : '';
 ?>
 <main class="lk-game">
 	<?php if ( $is_preview ) : ?>
@@ -103,13 +107,15 @@ $form_action_value      = isset( $form_action_value ) ? (string) $form_action_va
 		</div>
 	<?php endif; ?>
 
-	<?php if ( $playable ) : ?>
+	<?php if ( $playable && ! $game_locked ) : ?>
 		<form class="lk-game__form" method="post" action="">
 			<input type="hidden" name="lk_game_action" value="<?php echo esc_attr( $form_action_value ); ?>" />
 			<input type="hidden" name="lk_game_id" value="<?php echo esc_attr( (string) $game_id ); ?>" />
+			<input type="hidden" name="lk_image_stage" value="<?php echo esc_attr( (string) $image_stage ); ?>" />
+			<input type="hidden" name="lk_stage_token" value="<?php echo esc_attr( $stage_token ); ?>" />
 			<?php wp_nonce_field( $nonce_action, $nonce_field ); ?>
 
-			<fieldset class="lk-game__choices" <?php disabled( $game_locked ); ?>>
+			<fieldset class="lk-game__choices">
 				<legend class="lk-game__choices-legend">
 					<?php esc_html_e( 'Choose a location', 'local-knowledge' ); ?>
 				</legend>
@@ -125,7 +131,6 @@ $form_action_value      = isset( $form_action_value ) ? (string) $form_action_va
 							name="lk_location"
 							value="<?php echo esc_attr( (string) $index ); ?>"
 							<?php checked( $selected_choice, (string) $index ); ?>
-							<?php disabled( $game_locked ); ?>
 						/>
 						<label for="<?php echo esc_attr( $input_id ); ?>">
 							<?php echo esc_html( (string) $label ); ?>
@@ -134,13 +139,11 @@ $form_action_value      = isset( $form_action_value ) ? (string) $form_action_va
 				<?php endforeach; ?>
 			</fieldset>
 
-			<?php if ( ! $game_locked ) : ?>
-				<button type="submit" class="lk-game__submit">
-					<?php esc_html_e( 'Submit', 'local-knowledge' ); ?>
-				</button>
-			<?php endif; ?>
+			<button type="submit" class="lk-game__submit">
+				<?php esc_html_e( 'Submit', 'local-knowledge' ); ?>
+			</button>
 		</form>
-	<?php else : ?>
+	<?php elseif ( ! $playable ) : ?>
 		<form class="lk-game__form" action="#" method="post">
 			<fieldset class="lk-game__choices">
 				<legend class="lk-game__choices-legend">

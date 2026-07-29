@@ -47,6 +47,8 @@ final class GameRenderer {
 		$correct_location_label = $prepared['correct_location_label'];
 		$clean_game_url         = $prepared['clean_game_url'];
 		$strip_flash_from_url   = $prepared['strip_flash_from_url'];
+		$image_stage            = $prepared['image_stage'];
+		$stage_token            = $prepared['stage_token'];
 
 		?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -107,9 +109,9 @@ final class GameRenderer {
 		$image_url = isset( $view['image_url'] ) ? esc_url_raw( (string) $view['image_url'] ) : '';
 
 		if ( $image_id < 1 && '' === $image_url ) {
-			$errors[] = __( 'Image 1 is required.', 'local-knowledge' );
+			$errors[] = __( 'Current image is required.', 'local-knowledge' );
 		} elseif ( '' === $image_url ) {
-			$errors[] = __( 'Image 1 is unavailable or invalid.', 'local-knowledge' );
+			$errors[] = __( 'Current image is unavailable or invalid.', 'local-knowledge' );
 		}
 
 		$image_alt = isset( $view['image_alt'] )
@@ -119,11 +121,11 @@ final class GameRenderer {
 		if ( '' === $image_alt && $game_number > 0 ) {
 			$image_alt = sprintf(
 				/* translators: %d: game number */
-				__( 'Game %d image 1', 'local-knowledge' ),
+				__( 'Game %d image', 'local-knowledge' ),
 				$game_number
 			);
 		} elseif ( '' === $image_alt ) {
-			$image_alt = __( 'Game image 1', 'local-knowledge' );
+			$image_alt = __( 'Game image', 'local-knowledge' );
 		}
 
 		$raw_locations = isset( $view['locations'] ) && is_array( $view['locations'] )
@@ -188,6 +190,8 @@ final class GameRenderer {
 			'correct_location_label' => $correct_label,
 			'clean_game_url'         => isset( $view['clean_game_url'] ) ? esc_url_raw( (string) $view['clean_game_url'] ) : '',
 			'strip_flash_from_url'   => ! empty( $view['strip_flash_from_url'] ),
+			'image_stage'            => isset( $view['image_stage'] ) ? max( 1, min( 4, absint( $view['image_stage'] ) ) ) : 1,
+			'stage_token'            => isset( $view['stage_token'] ) ? sanitize_text_field( (string) $view['stage_token'] ) : '',
 		);
 	}
 

@@ -94,13 +94,20 @@ final class GameDisplayData {
 	/**
 	 * Build renderer view data without correct-answer metadata.
 	 *
-	 * @param int  $game_id    Game post ID.
-	 * @param bool $is_preview Whether Preview Mode should be shown.
+	 * @param int  $game_id     Game post ID.
+	 * @param bool $is_preview  Whether Preview Mode should be shown.
+	 * @param int  $image_stage Image stage to display (1–4). Preview always uses 1.
 	 * @return array<string, mixed>
 	 */
-	public function build_view( int $game_id, bool $is_preview ): array {
+	public function build_view( int $game_id, bool $is_preview, int $image_stage = 1 ): array {
 		$game_number = absint( get_post_meta( $game_id, self::META_KEYS['game_number'], true ) );
-		$image_id    = absint( get_post_meta( $game_id, self::META_KEYS['image_1_id'], true ) );
+
+		if ( $is_preview ) {
+			$image_stage = 1;
+		}
+
+		$image_stage = max( 1, min( 4, $image_stage ) );
+		$image_id    = $this->get_image_id_for_slot( $game_id, $image_stage );
 
 		$image_url = '';
 		$image_alt = '';
@@ -135,7 +142,22 @@ final class GameDisplayData {
 			'image_alt'   => sanitize_text_field( $image_alt ),
 			'locations'   => $locations,
 			'is_preview'  => $is_preview,
+			'image_stage' => $image_stage,
 		);
+	}
+
+	/**
+	 * Get the attachment ID for an image slot (1–4).
+	 *
+	 * @param int $game_id Game post ID.
+	 * @param int $slot    Image slot number.
+	 */
+	public function get_image_id_for_slot( int $game_id, int $slot ): int {
+		if ( $slot < 1 || $slot > 4 ) {
+			return 0;
+		}
+
+		return absint( get_post_meta( $game_id, self::META_KEYS[ 'image_' . $slot . '_id' ], true ) );
 	}
 
 	/**

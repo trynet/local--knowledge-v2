@@ -146,11 +146,14 @@ final class GameRoute {
 			return;
 		}
 
-		$view = $display->build_view( $game_id, false );
-
 		$play = new GamePlay();
 		$play->maybe_redirect_after_post( $game_id, $game_number );
-		$view = array_merge( $view, $play->get_view_extras( $game_id, $game_number ) );
+
+		$extras = $play->get_view_extras( $game_id, $game_number );
+		$stage  = isset( $extras['image_stage'] ) ? absint( $extras['image_stage'] ) : 1;
+
+		$view = $display->build_view( $game_id, false, $stage );
+		$view = array_merge( $view, $extras );
 
 		$renderer = new GameRenderer();
 		$renderer->render( $view );
