@@ -139,6 +139,35 @@ final class GameDisplayData {
 	}
 
 	/**
+	 * Get the correct location key for server-side answer checking only.
+	 *
+	 * @param int $game_id Game post ID.
+	 */
+	public function get_correct_location_key( int $game_id ): string {
+		$correct = sanitize_text_field(
+			(string) get_post_meta( $game_id, self::META_KEYS['correct_location'], true )
+		);
+
+		return in_array( $correct, array( '1', '2', '3', '4' ), true ) ? $correct : '';
+	}
+
+	/**
+	 * Get a location choice label by key.
+	 *
+	 * @param int    $game_id Game post ID.
+	 * @param string $key     Choice key 1–4.
+	 */
+	public function get_location_label( int $game_id, string $key ): string {
+		if ( ! in_array( $key, array( '1', '2', '3', '4' ), true ) ) {
+			return '';
+		}
+
+		return sanitize_text_field(
+			(string) get_post_meta( $game_id, self::META_KEYS[ 'location_' . $key ], true )
+		);
+	}
+
+	/**
 	 * Validate one image attachment field.
 	 *
 	 * @param int $attachment_id Attachment ID.

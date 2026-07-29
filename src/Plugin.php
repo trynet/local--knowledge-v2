@@ -13,6 +13,7 @@ use JoyOfCode\LocalKnowledge\Admin\GameEditor;
 use JoyOfCode\LocalKnowledge\Admin\GamePostType;
 use JoyOfCode\LocalKnowledge\Admin\GamePreview;
 use JoyOfCode\LocalKnowledge\Admin\GameValidator;
+use JoyOfCode\LocalKnowledge\Frontend\GamePlay;
 use JoyOfCode\LocalKnowledge\Frontend\GameRoute;
 
 defined( 'ABSPATH' ) || exit;
@@ -40,5 +41,8 @@ final class Plugin {
 
 		$game_route = new GameRoute();
 		$game_route->register();
+
+		$game_play = new GamePlay();
+		$game_play->register();
 	}
 }

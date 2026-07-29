@@ -31,11 +31,22 @@ final class GameRenderer {
 
 		$this->enqueue_assets();
 
-		$game_number = $prepared['game_number'];
-		$image_url   = $prepared['image_url'];
-		$image_alt   = $prepared['image_alt'];
-		$locations   = $prepared['locations'];
-		$is_preview  = $prepared['is_preview'];
+		$game_number            = $prepared['game_number'];
+		$image_url              = $prepared['image_url'];
+		$image_alt              = $prepared['image_alt'];
+		$locations              = $prepared['locations'];
+		$is_preview             = $prepared['is_preview'];
+		$playable               = $prepared['playable'];
+		$game_id                = $prepared['game_id'];
+		$nonce_action           = $prepared['nonce_action'];
+		$nonce_field            = $prepared['nonce_field'];
+		$form_action_value      = $prepared['form_action_value'];
+		$feedback               = $prepared['feedback'];
+		$selected_choice        = $prepared['selected_choice'];
+		$game_locked            = $prepared['game_locked'];
+		$correct_location_label = $prepared['correct_location_label'];
+		$clean_game_url         = $prepared['clean_game_url'];
+		$strip_flash_from_url   = $prepared['strip_flash_from_url'];
 
 		?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -55,9 +66,22 @@ final class GameRenderer {
 	</title>
 	<?php wp_print_styles( self::STYLE_HANDLE ); ?>
 </head>
-<body class="lk-game-screen<?php echo $is_preview ? ' lk-game-screen--preview' : ''; ?>">
+<body class="lk-game-screen<?php echo $is_preview ? ' lk-game-screen--preview' : ''; ?><?php echo $game_locked ? ' lk-game-screen--locked' : ''; ?>">
 <?php
 		include LK_PLUGIN_DIR . 'templates/game.php';
+
+		if ( $strip_flash_from_url && '' !== $clean_game_url ) :
+			?>
+<script>
+(function () {
+	if (!window.history || typeof window.history.replaceState !== 'function') {
+		return;
+	}
+	window.history.replaceState(null, document.title, <?php echo wp_json_encode( $clean_game_url ); ?>);
+})();
+</script>
+			<?php
+		endif;
 ?>
 </body>
 </html>
@@ -67,16 +91,8 @@ final class GameRenderer {
 	/**
 	 * Validate and normalize renderer input.
 	 *
-	 * Collects every display-field problem before failing.
-	 *
 	 * @param array<string, mixed> $view Raw view data.
-	 * @return array{
-	 *     game_number: int,
-	 *     image_url: string,
-	 *     image_alt: string,
-	 *     locations: array{1: string, 2: string, 3: string, 4: string},
-	 *     is_preview: bool
-	 * }
+	 * @return array<string, mixed>
 	 */
 	private function prepare_view( array $view ): array {
 		$errors = array();
@@ -137,12 +153,41 @@ final class GameRenderer {
 			$this->fail( $errors );
 		}
 
+		$is_preview = ! empty( $view['is_preview'] );
+		$playable   = ! $is_preview && ! empty( $view['playable'] );
+		$game_locked = $playable && ! empty( $view['game_locked'] );
+
+		$correct_label = '';
+
+		if ( $game_locked && isset( $view['correct_location_label'] ) ) {
+			$correct_label = sanitize_text_field( (string) $view['correct_location_label'] );
+		}
+
+		$selected = isset( $view['selected_choice'] )
+			? sanitize_text_field( (string) $view['selected_choice'] )
+			: '';
+
+		if ( ! in_array( $selected, array( '1', '2', '3', '4' ), true ) ) {
+			$selected = '';
+		}
+
 		return array(
-			'game_number' => $game_number,
-			'image_url'   => $image_url,
-			'image_alt'   => $image_alt,
-			'locations'   => $locations,
-			'is_preview'  => ! empty( $view['is_preview'] ),
+			'game_number'            => $game_number,
+			'image_url'              => $image_url,
+			'image_alt'              => $image_alt,
+			'locations'              => $locations,
+			'is_preview'             => $is_preview,
+			'playable'               => $playable,
+			'game_id'                => isset( $view['game_id'] ) ? absint( $view['game_id'] ) : 0,
+			'nonce_action'           => isset( $view['nonce_action'] ) ? sanitize_text_field( (string) $view['nonce_action'] ) : '',
+			'nonce_field'            => isset( $view['nonce_field'] ) ? sanitize_key( (string) $view['nonce_field'] ) : '',
+			'form_action_value'      => isset( $view['form_action_value'] ) ? sanitize_key( (string) $view['form_action_value'] ) : '',
+			'feedback'               => isset( $view['feedback'] ) ? sanitize_key( (string) $view['feedback'] ) : '',
+			'selected_choice'        => $selected,
+			'game_locked'            => $game_locked,
+			'correct_location_label' => $correct_label,
+			'clean_game_url'         => isset( $view['clean_game_url'] ) ? esc_url_raw( (string) $view['clean_game_url'] ) : '',
+			'strip_flash_from_url'   => ! empty( $view['strip_flash_from_url'] ),
 		);
 	}
 
@@ -164,7 +209,7 @@ final class GameRenderer {
 	 * @param list<string> $errors Human-readable validation messages.
 	 */
 	private function fail( array $errors ): void {
-		$message  = '<p><strong>' . esc_html__( 'This Game cannot be previewed because it is incomplete.', 'local-knowledge' ) . '</strong></p>';
+		$message  = '<p><strong>' . esc_html__( 'This Game cannot be displayed because it is incomplete.', 'local-knowledge' ) . '</strong></p>';
 		$message .= '<ul>';
 
 		foreach ( $errors as $error ) {
