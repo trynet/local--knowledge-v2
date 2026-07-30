@@ -147,6 +147,57 @@ final class GameDisplayData {
 	}
 
 	/**
+	 * Build static thumbnail data for Images 1–4 (Image 4 end-game layout).
+	 *
+	 * @param int $game_id Game post ID.
+	 * @return list<array{stage: int, image_url: string, image_alt: string}>
+	 */
+	public function get_thumbnails( int $game_id ): array {
+		$thumbnails = array();
+
+		for ( $stage = 1; $stage <= 4; $stage++ ) {
+			$image_id  = $this->get_image_id_for_slot( $game_id, $stage );
+			$image_url = '';
+			$image_alt = '';
+
+			if ( $image_id > 0 && wp_attachment_is_image( $image_id ) ) {
+				$src = wp_get_attachment_image_src( $image_id, 'medium' );
+
+				if ( ! is_array( $src ) || empty( $src[0] ) ) {
+					$src = wp_get_attachment_image_src( $image_id, 'full' );
+				}
+
+				if ( is_array( $src ) && ! empty( $src[0] ) ) {
+					$image_url = (string) $src[0];
+				}
+
+				$image_alt = (string) get_post_meta( $image_id, '_wp_attachment_image_alt', true );
+
+				if ( '' === $image_alt ) {
+					$attachment = get_post( $image_id );
+					$image_alt  = $attachment instanceof \WP_Post ? $attachment->post_title : '';
+				}
+
+				if ( '' === $image_alt ) {
+					$image_alt = sprintf(
+						/* translators: %d: image stage number */
+						__( 'Game image %d', 'local-knowledge' ),
+						$stage
+					);
+				}
+			}
+
+			$thumbnails[] = array(
+				'stage'     => $stage,
+				'image_url' => $image_url,
+				'image_alt' => sanitize_text_field( $image_alt ),
+			);
+		}
+
+		return $thumbnails;
+	}
+
+	/**
 	 * Map an image stage (1–4) to its post meta key.
 	 *
 	 * @param int $stage Image stage.

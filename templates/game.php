@@ -18,6 +18,9 @@
  * - bool   $game_locked
  * - string $correct_location_label
  * - int    $image_stage
+ * - bool   $show_idk
+ * - bool   $show_thumbnails
+ * - array  $thumbnails
  *
  * @package JoyOfCode\LocalKnowledge
  */
@@ -38,6 +41,9 @@ $nonce_action           = isset( $nonce_action ) ? (string) $nonce_action : '';
 $nonce_field            = isset( $nonce_field ) ? (string) $nonce_field : '';
 $form_action_value      = isset( $form_action_value ) ? (string) $form_action_value : '';
 $image_stage            = isset( $image_stage ) ? max( 1, min( 4, (int) $image_stage ) ) : 1;
+$show_idk               = ! empty( $show_idk );
+$show_thumbnails        = ! empty( $show_thumbnails );
+$thumbnails             = isset( $thumbnails ) && is_array( $thumbnails ) ? $thumbnails : array();
 ?>
 <main class="lk-game">
 	<?php if ( $is_preview ) : ?>
@@ -68,11 +74,51 @@ $image_stage            = isset( $image_stage ) ? max( 1, min( 4, (int) $image_s
 		/>
 	</figure>
 
+	<?php if ( $show_thumbnails && array() !== $thumbnails ) : ?>
+		<ul class="lk-game__thumbnails" aria-label="<?php esc_attr_e( 'All game images', 'local-knowledge' ); ?>">
+			<?php foreach ( $thumbnails as $thumbnail ) : ?>
+				<?php
+				$thumb_url = isset( $thumbnail['image_url'] ) ? (string) $thumbnail['image_url'] : '';
+				$thumb_alt = isset( $thumbnail['image_alt'] ) ? (string) $thumbnail['image_alt'] : '';
+
+				if ( '' === $thumb_url ) {
+					continue;
+				}
+				?>
+				<li class="lk-game__thumbnail">
+					<span class="lk-game__thumbnail-frame">
+						<img
+							class="lk-game__thumbnail-image"
+							src="<?php echo esc_url( $thumb_url ); ?>"
+							alt="<?php echo esc_attr( $thumb_alt ); ?>"
+							draggable="false"
+						/>
+					</span>
+				</li>
+			<?php endforeach; ?>
+		</ul>
+	<?php endif; ?>
+
 	<?php if ( $playable && '' !== $feedback ) : ?>
 		<div class="lk-game__feedback lk-game__feedback--<?php echo esc_attr( $feedback ); ?>" role="status" aria-live="polite">
 			<?php if ( 'correct' === $feedback ) : ?>
 				<p class="lk-game__feedback-message">
 					<?php esc_html_e( 'Correct! You identified the location.', 'local-knowledge' ); ?>
+				</p>
+				<?php if ( '' !== $correct_location_label ) : ?>
+					<p class="lk-game__correct-answer">
+						<?php
+						printf(
+							/* translators: %s: correct location label */
+							esc_html__( 'The correct location is: %s', 'local-knowledge' ),
+							esc_html( $correct_location_label )
+						);
+						?>
+					</p>
+				<?php endif; ?>
+			<?php elseif ( 'idk' === $feedback ) : ?>
+				<p class="lk-game__feedback-message">
+					<?php esc_html_e( 'Game complete. You selected I Don\'t Know.', 'local-knowledge' ); ?>
 				</p>
 				<?php if ( '' !== $correct_location_label ) : ?>
 					<p class="lk-game__correct-answer">
@@ -133,6 +179,21 @@ $image_stage            = isset( $image_stage ) ? max( 1, min( 4, (int) $image_s
 						</label>
 					</div>
 				<?php endforeach; ?>
+
+				<?php if ( $show_idk ) : ?>
+					<div class="lk-game__choice lk-game__choice--idk">
+						<input
+							type="radio"
+							id="lk-location-idk"
+							name="lk_location"
+							value="idk"
+							<?php checked( $selected_choice, 'idk' ); ?>
+						/>
+						<label for="lk-location-idk">
+							<?php esc_html_e( 'I Don\'t Know', 'local-knowledge' ); ?>
+						</label>
+					</div>
+				<?php endif; ?>
 			</fieldset>
 
 			<button type="submit" class="lk-game__submit">

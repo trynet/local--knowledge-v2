@@ -48,6 +48,9 @@ final class GameRenderer {
 		$clean_game_url         = $prepared['clean_game_url'];
 		$strip_flash_from_url   = $prepared['strip_flash_from_url'];
 		$image_stage            = $prepared['image_stage'];
+		$show_idk               = $prepared['show_idk'];
+		$show_thumbnails        = $prepared['show_thumbnails'];
+		$thumbnails             = $prepared['thumbnails'];
 
 		?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -154,9 +157,12 @@ final class GameRenderer {
 			$this->fail( $errors );
 		}
 
-		$is_preview = ! empty( $view['is_preview'] );
-		$playable   = ! $is_preview && ! empty( $view['playable'] );
-		$game_locked = $playable && ! empty( $view['game_locked'] );
+		$is_preview      = ! empty( $view['is_preview'] );
+		$playable        = ! $is_preview && ! empty( $view['playable'] );
+		$game_locked     = $playable && ! empty( $view['game_locked'] );
+		$image_stage     = isset( $view['image_stage'] ) ? max( 1, min( 4, absint( $view['image_stage'] ) ) ) : 1;
+		$show_idk        = $playable && ! $game_locked && ! empty( $view['show_idk'] ) && 4 === $image_stage;
+		$show_thumbnails = $playable && ! empty( $view['show_thumbnails'] ) && 4 === $image_stage;
 
 		$correct_label = '';
 
@@ -168,8 +174,36 @@ final class GameRenderer {
 			? sanitize_text_field( (string) $view['selected_choice'] )
 			: '';
 
-		if ( ! in_array( $selected, array( '1', '2', '3', '4' ), true ) ) {
+		if ( ! in_array( $selected, array( '1', '2', '3', '4', 'idk' ), true ) ) {
 			$selected = '';
+		}
+
+		$thumbnails = array();
+
+		if ( $show_thumbnails && isset( $view['thumbnails'] ) && is_array( $view['thumbnails'] ) ) {
+			foreach ( $view['thumbnails'] as $thumb ) {
+				if ( ! is_array( $thumb ) ) {
+					continue;
+				}
+
+				$url = isset( $thumb['image_url'] ) ? esc_url_raw( (string) $thumb['image_url'] ) : '';
+				$alt = isset( $thumb['image_alt'] ) ? sanitize_text_field( (string) $thumb['image_alt'] ) : '';
+
+				if ( '' === $url ) {
+					continue;
+				}
+
+				$thumbnails[] = array(
+					'stage'     => isset( $thumb['stage'] ) ? max( 1, min( 4, absint( $thumb['stage'] ) ) ) : 0,
+					'image_url' => $url,
+					'image_alt' => $alt,
+				);
+			}
+		}
+
+		if ( $show_thumbnails && count( $thumbnails ) < 4 ) {
+			$show_thumbnails = false;
+			$thumbnails      = array();
 		}
 
 		return array(
@@ -189,7 +223,10 @@ final class GameRenderer {
 			'correct_location_label' => $correct_label,
 			'clean_game_url'         => isset( $view['clean_game_url'] ) ? esc_url_raw( (string) $view['clean_game_url'] ) : '',
 			'strip_flash_from_url'   => ! empty( $view['strip_flash_from_url'] ),
-			'image_stage'            => isset( $view['image_stage'] ) ? max( 1, min( 4, absint( $view['image_stage'] ) ) ) : 1,
+			'image_stage'            => $image_stage,
+			'show_idk'               => $show_idk,
+			'show_thumbnails'        => $show_thumbnails,
+			'thumbnails'             => $thumbnails,
 		);
 	}
 

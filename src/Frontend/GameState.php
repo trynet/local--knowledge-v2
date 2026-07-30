@@ -143,7 +143,7 @@ final class GameState {
 			return null;
 		}
 
-		if ( $state['ended'] && 'correct' !== $state['result_type'] ) {
+		if ( $state['ended'] && ! in_array( $state['result_type'], array( 'correct', 'idk' ), true ) ) {
 			return null;
 		}
 
@@ -176,7 +176,7 @@ final class GameState {
 			$stage = 1;
 		}
 
-		if ( 'correct' !== $result ) {
+		if ( ! in_array( $result, array( 'correct', 'idk' ), true ) ) {
 			$result = '';
 		}
 

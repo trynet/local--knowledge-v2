@@ -92,23 +92,32 @@ final class GamePlay {
 	 * @return array<string, mixed>
 	 */
 	public function get_view_extras( int $game_id, int $game_number ): array {
-		$state  = $this->state_store->get_public_state( $game_id );
-		$extras = $this->default_view_extras( $game_id );
+		$state   = $this->state_store->get_public_state( $game_id );
+		$extras  = $this->default_view_extras( $game_id );
+		$display = new GameDisplayData();
+		$stage   = (int) $state['image_stage'];
+		$result  = (string) $state['result_type'];
+		$ended   = ! empty( $state['ended'] );
 
 		$extras['clean_game_url'] = GameRoute::get_public_url( $game_number );
-		$extras['image_stage']    = (int) $state['image_stage'];
-		$extras['game_locked']    = ! empty( $state['ended'] ) && 'correct' === $state['result_type'];
+		$extras['image_stage']    = $stage;
+		$extras['game_locked']    = $ended && in_array( $result, array( 'correct', 'idk' ), true );
+		$extras['show_idk']       = ! $extras['game_locked'] && 4 === $stage;
+		$extras['show_thumbnails'] = 4 === $stage;
+
+		if ( $extras['show_thumbnails'] ) {
+			$extras['thumbnails'] = $display->get_thumbnails( $game_id );
+		}
 
 		if ( $extras['game_locked'] ) {
-			$display = new GameDisplayData();
-			$key     = $display->get_correct_location_key( $game_id );
+			$key = $display->get_correct_location_key( $game_id );
 
 			if ( '' !== $key ) {
 				$extras['correct_location_label'] = $display->get_location_label( $game_id, $key );
 			}
 
-			// Completed Games show the success message on every revisit.
-			$extras['feedback'] = 'correct';
+			// Completed Games keep their result message on every revisit.
+			$extras['feedback'] = $result;
 		}
 
 		$flash = $this->decode_flash_from_request( $game_id );
@@ -120,7 +129,7 @@ final class GamePlay {
 
 			// Do not let a stale flash unlock a completed Game UI.
 			if ( $extras['game_locked'] ) {
-				$extras['feedback'] = 'correct';
+				$extras['feedback'] = $result;
 			}
 		}
 
@@ -179,7 +188,7 @@ final class GamePlay {
 		$state = $this->state_store->get_public_state( $game_id );
 
 		// Completed Games reject further submissions on the server.
-		if ( ! empty( $state['ended'] ) && 'correct' === $state['result_type'] ) {
+		if ( ! empty( $state['ended'] ) && in_array( (string) $state['result_type'], array( 'correct', 'idk' ), true ) ) {
 			$result['feedback'] = 'already_ended';
 			$this->state_store->save_public_state( $state );
 			return $result;
@@ -196,6 +205,31 @@ final class GamePlay {
 		if ( '' === $choice ) {
 			$result['feedback'] = 'missing';
 			$this->state_store->save_public_state( $state );
+			return $result;
+		}
+
+		// IDK is only valid once the player has reached Image 4.
+		if ( 'idk' === $choice ) {
+			if ( 4 !== $stage ) {
+				$result['feedback']        = 'invalid_choice';
+				$result['selected_choice'] = '';
+				$this->state_store->save_public_state( $state );
+				return $result;
+			}
+
+			$correct = $display->get_correct_location_key( $game_id );
+
+			if ( '' === $correct ) {
+				$result['feedback'] = 'invalid_game';
+				return $result;
+			}
+
+			$state['image_stage'] = 4;
+			$state['ended']       = true;
+			$state['result_type'] = 'idk';
+			$this->state_store->save_public_state( $state );
+
+			$result['feedback'] = 'idk';
 			return $result;
 		}
 
@@ -265,7 +299,7 @@ final class GamePlay {
 	 *
 	 * @param int    $game_id  Game post ID.
 	 * @param string $feedback Feedback code.
-	 * @param string $choice   Selected choice 1–4 or empty.
+	 * @param string $choice   Selected choice 1–4, idk, or empty.
 	 */
 	private function encode_flash_token( int $game_id, string $feedback, string $choice ): string {
 		$payload = array(
@@ -339,6 +373,7 @@ final class GamePlay {
 		$allowed_feedback = array(
 			'correct',
 			'incorrect',
+			'idk',
 			'missing',
 			'invalid_choice',
 			'invalid_nonce',
@@ -350,7 +385,7 @@ final class GamePlay {
 			return null;
 		}
 
-		if ( ! in_array( $choice, array( '', '1', '2', '3', '4' ), true ) ) {
+		if ( ! in_array( $choice, array( '', '1', '2', '3', '4', 'idk' ), true ) ) {
 			$choice = '';
 		}
 
@@ -380,6 +415,9 @@ final class GamePlay {
 			'clean_game_url'         => '',
 			'strip_flash_from_url'   => false,
 			'image_stage'            => 1,
+			'show_idk'               => false,
+			'show_thumbnails'        => false,
+			'thumbnails'             => array(),
 		);
 	}
 
