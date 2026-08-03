@@ -17,17 +17,18 @@
  * - string $selected_choice
  * - bool   $game_locked
  * - string $correct_location_label
- * - int    $image_stage
+ * - int    $current_view
+ * - bool   $show_large_image
+ * - bool   $show_comparison
  * - bool   $show_idk
- * - bool   $show_thumbnails
- * - array  $thumbnails
+ * - array  $comparison_images
  *
  * @package JoyOfCode\LocalKnowledge
  */
 
 defined( 'ABSPATH' ) || exit;
 
-if ( ! isset( $game_number, $image_url, $image_alt, $locations, $is_preview ) ) {
+if ( ! isset( $game_number, $locations, $is_preview ) ) {
 	return;
 }
 
@@ -40,12 +41,14 @@ $game_id                = isset( $game_id ) ? (int) $game_id : 0;
 $nonce_action           = isset( $nonce_action ) ? (string) $nonce_action : '';
 $nonce_field            = isset( $nonce_field ) ? (string) $nonce_field : '';
 $form_action_value      = isset( $form_action_value ) ? (string) $form_action_value : '';
-$image_stage            = isset( $image_stage ) ? max( 1, min( 4, (int) $image_stage ) ) : 1;
+$image_url              = isset( $image_url ) ? (string) $image_url : '';
+$image_alt              = isset( $image_alt ) ? (string) $image_alt : '';
+$show_large_image       = ! empty( $show_large_image );
+$show_comparison        = ! empty( $show_comparison );
 $show_idk               = ! empty( $show_idk );
-$show_thumbnails        = ! empty( $show_thumbnails );
-$thumbnails             = isset( $thumbnails ) && is_array( $thumbnails ) ? $thumbnails : array();
+$comparison_images      = isset( $comparison_images ) && is_array( $comparison_images ) ? $comparison_images : array();
 ?>
-<main class="lk-game">
+<main class="lk-game<?php echo $show_comparison ? ' lk-game--comparison' : ''; ?>">
 	<?php if ( $is_preview ) : ?>
 		<div class="lk-game__preview-notice" role="status">
 			<?php esc_html_e( 'Preview Mode — No player progress or scores will be recorded.', 'local-knowledge' ); ?>
@@ -66,37 +69,73 @@ $thumbnails             = isset( $thumbnails ) && is_array( $thumbnails ) ? $thu
 		</h1>
 	</header>
 
-	<figure class="lk-game__image-frame">
-		<img
-			class="lk-game__image"
-			src="<?php echo esc_url( (string) $image_url ); ?>"
-			alt="<?php echo esc_attr( (string) $image_alt ); ?>"
-		/>
-	</figure>
+	<?php if ( $show_large_image && '' !== $image_url ) : ?>
+		<figure class="lk-game__image-frame">
+			<img
+				class="lk-game__image"
+				src="<?php echo esc_url( $image_url ); ?>"
+				alt="<?php echo esc_attr( $image_alt ); ?>"
+			/>
+		</figure>
+	<?php endif; ?>
 
-	<?php if ( $show_thumbnails && array() !== $thumbnails ) : ?>
-		<ul class="lk-game__thumbnails" aria-label="<?php esc_attr_e( 'All game images', 'local-knowledge' ); ?>">
-			<?php foreach ( $thumbnails as $thumbnail ) : ?>
-				<?php
-				$thumb_url = isset( $thumbnail['image_url'] ) ? (string) $thumbnail['image_url'] : '';
-				$thumb_alt = isset( $thumbnail['image_alt'] ) ? (string) $thumbnail['image_alt'] : '';
+	<?php if ( $show_comparison && array() !== $comparison_images ) : ?>
+		<section class="lk-game__comparison" aria-label="<?php esc_attr_e( 'Compare all game images', 'local-knowledge' ); ?>">
+			<ul class="lk-game__comparison-grid">
+				<?php foreach ( $comparison_images as $index => $item ) : ?>
+					<?php
+					$cell_url  = isset( $item['image_url'] ) ? (string) $item['image_url'] : '';
+					$cell_full = isset( $item['full_url'] ) ? (string) $item['full_url'] : $cell_url;
+					$cell_alt  = isset( $item['image_alt'] ) ? (string) $item['image_alt'] : '';
+					$cell_n    = isset( $item['stage'] ) ? (int) $item['stage'] : ( (int) $index + 1 );
 
-				if ( '' === $thumb_url ) {
-					continue;
-				}
-				?>
-				<li class="lk-game__thumbnail">
-					<span class="lk-game__thumbnail-frame">
-						<img
-							class="lk-game__thumbnail-image"
-							src="<?php echo esc_url( $thumb_url ); ?>"
-							alt="<?php echo esc_attr( $thumb_alt ); ?>"
-							draggable="false"
-						/>
-					</span>
-				</li>
-			<?php endforeach; ?>
-		</ul>
+					if ( '' === $cell_url ) {
+						continue;
+					}
+
+					$label = sprintf(
+						/* translators: %d: image number */
+						__( 'Enlarge game image %d', 'local-knowledge' ),
+						$cell_n
+					);
+					?>
+					<li class="lk-game__comparison-cell">
+						<button
+							type="button"
+							class="lk-game__comparison-trigger"
+							aria-haspopup="dialog"
+							aria-controls="lk-comparison-dialog"
+							data-lk-full-src="<?php echo esc_url( $cell_full ); ?>"
+							data-lk-full-alt="<?php echo esc_attr( $cell_alt ); ?>"
+						>
+							<span class="lk-game__comparison-frame">
+								<img
+									class="lk-game__comparison-image"
+									src="<?php echo esc_url( $cell_url ); ?>"
+									alt="<?php echo esc_attr( $cell_alt ); ?>"
+									draggable="false"
+								/>
+							</span>
+							<span class="screen-reader-text"><?php echo esc_html( $label ); ?></span>
+						</button>
+					</li>
+				<?php endforeach; ?>
+			</ul>
+
+			<dialog class="lk-game__comparison-dialog" id="lk-comparison-dialog" aria-labelledby="lk-comparison-dialog-title">
+				<div class="lk-game__comparison-dialog-inner">
+					<h2 id="lk-comparison-dialog-title" class="lk-game__comparison-dialog-title">
+						<?php esc_html_e( 'Enlarged game image', 'local-knowledge' ); ?>
+					</h2>
+					<button type="button" class="lk-game__comparison-dialog-close" data-lk-dialog-close>
+						<?php esc_html_e( 'Close', 'local-knowledge' ); ?>
+					</button>
+					<figure class="lk-game__comparison-dialog-figure">
+						<img class="lk-game__comparison-dialog-image" src="" alt="" />
+					</figure>
+				</div>
+			</dialog>
+		</section>
 	<?php endif; ?>
 
 	<?php if ( $playable && '' !== $feedback ) : ?>
@@ -118,7 +157,7 @@ $thumbnails             = isset( $thumbnails ) && is_array( $thumbnails ) ? $thu
 				<?php endif; ?>
 			<?php elseif ( 'idk' === $feedback ) : ?>
 				<p class="lk-game__feedback-message">
-					<?php esc_html_e( 'Game complete. You selected I Don\'t Know.', 'local-knowledge' ); ?>
+					<?php esc_html_e( 'Game complete. No correct location guess was submitted.', 'local-knowledge' ); ?>
 				</p>
 				<?php if ( '' !== $correct_location_label ) : ?>
 					<p class="lk-game__correct-answer">

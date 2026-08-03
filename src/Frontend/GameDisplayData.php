@@ -147,28 +147,39 @@ final class GameDisplayData {
 	}
 
 	/**
-	 * Build static thumbnail data for Images 1–4 (Image 4 end-game layout).
+	 * Build comparison-grid image data for Views (Images 1–4).
 	 *
 	 * @param int $game_id Game post ID.
-	 * @return list<array{stage: int, image_url: string, image_alt: string}>
+	 * @return list<array{stage: int, image_url: string, full_url: string, image_alt: string}>
 	 */
-	public function get_thumbnails( int $game_id ): array {
-		$thumbnails = array();
+	public function get_comparison_images( int $game_id ): array {
+		$images = array();
 
 		for ( $stage = 1; $stage <= 4; $stage++ ) {
 			$image_id  = $this->get_image_id_for_slot( $game_id, $stage );
 			$image_url = '';
+			$full_url  = '';
 			$image_alt = '';
 
 			if ( $image_id > 0 && wp_attachment_is_image( $image_id ) ) {
+				$full = wp_get_attachment_image_src( $image_id, 'full' );
+
+				if ( is_array( $full ) && ! empty( $full[0] ) ) {
+					$full_url = (string) $full[0];
+				}
+
 				$src = wp_get_attachment_image_src( $image_id, 'medium' );
 
 				if ( ! is_array( $src ) || empty( $src[0] ) ) {
-					$src = wp_get_attachment_image_src( $image_id, 'full' );
+					$src = $full;
 				}
 
 				if ( is_array( $src ) && ! empty( $src[0] ) ) {
 					$image_url = (string) $src[0];
+				}
+
+				if ( '' === $full_url ) {
+					$full_url = $image_url;
 				}
 
 				$image_alt = (string) get_post_meta( $image_id, '_wp_attachment_image_alt', true );
@@ -187,14 +198,15 @@ final class GameDisplayData {
 				}
 			}
 
-			$thumbnails[] = array(
+			$images[] = array(
 				'stage'     => $stage,
 				'image_url' => $image_url,
+				'full_url'  => $full_url,
 				'image_alt' => sanitize_text_field( $image_alt ),
 			);
 		}
 
-		return $thumbnails;
+		return $images;
 	}
 
 	/**

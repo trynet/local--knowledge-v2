@@ -22,6 +22,11 @@ final class GameRenderer {
 	public const STYLE_HANDLE = 'lk-game';
 
 	/**
+	 * Script handle for comparison-image enlargement.
+	 */
+	public const SCRIPT_HANDLE = 'lk-game-comparison';
+
+	/**
 	 * Render a complete standalone Game page.
 	 *
 	 * @param array<string, mixed> $view Prepared view data.
@@ -29,7 +34,7 @@ final class GameRenderer {
 	public function render( array $view ): void {
 		$prepared = $this->prepare_view( $view );
 
-		$this->enqueue_assets();
+		$this->enqueue_assets( ! empty( $prepared['show_comparison'] ) );
 
 		$game_number            = $prepared['game_number'];
 		$image_url              = $prepared['image_url'];
@@ -47,10 +52,11 @@ final class GameRenderer {
 		$correct_location_label = $prepared['correct_location_label'];
 		$clean_game_url         = $prepared['clean_game_url'];
 		$strip_flash_from_url   = $prepared['strip_flash_from_url'];
-		$image_stage            = $prepared['image_stage'];
+		$current_view           = $prepared['current_view'];
+		$show_large_image       = $prepared['show_large_image'];
+		$show_comparison        = $prepared['show_comparison'];
 		$show_idk               = $prepared['show_idk'];
-		$show_thumbnails        = $prepared['show_thumbnails'];
-		$thumbnails             = $prepared['thumbnails'];
+		$comparison_images      = $prepared['comparison_images'];
 
 		?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -70,9 +76,13 @@ final class GameRenderer {
 	</title>
 	<?php wp_print_styles( self::STYLE_HANDLE ); ?>
 </head>
-<body class="lk-game-screen<?php echo $is_preview ? ' lk-game-screen--preview' : ''; ?><?php echo $game_locked ? ' lk-game-screen--locked' : ''; ?>">
+<body class="lk-game-screen<?php echo $is_preview ? ' lk-game-screen--preview' : ''; ?><?php echo $game_locked ? ' lk-game-screen--locked' : ''; ?><?php echo $show_comparison ? ' lk-game-screen--comparison' : ''; ?>">
 <?php
 		include LK_PLUGIN_DIR . 'templates/game.php';
+
+		if ( $show_comparison ) {
+			wp_print_scripts( self::SCRIPT_HANDLE );
+		}
 
 		if ( $strip_flash_from_url && '' !== $clean_game_url ) :
 			?>
@@ -107,27 +117,36 @@ final class GameRenderer {
 			$errors[] = __( 'Game Number is required.', 'local-knowledge' );
 		}
 
+		$current_view    = isset( $view['current_view'] ) ? absint( $view['current_view'] ) : 1;
+		$current_view    = max( 1, min( GameState::VIEW_COMPARISON, $current_view ) );
+		$show_comparison = ! empty( $view['show_comparison'] ) || GameState::VIEW_COMPARISON === $current_view;
+		$show_large      = ! $show_comparison && ( ! isset( $view['show_large_image'] ) || ! empty( $view['show_large_image'] ) );
+
 		$image_id  = isset( $view['image_id'] ) ? absint( $view['image_id'] ) : 0;
 		$image_url = isset( $view['image_url'] ) ? esc_url_raw( (string) $view['image_url'] ) : '';
-
-		if ( $image_id < 1 && '' === $image_url ) {
-			$errors[] = __( 'Current image is required.', 'local-knowledge' );
-		} elseif ( '' === $image_url ) {
-			$errors[] = __( 'Current image is unavailable or invalid.', 'local-knowledge' );
-		}
-
 		$image_alt = isset( $view['image_alt'] )
 			? sanitize_text_field( (string) $view['image_alt'] )
 			: '';
 
-		if ( '' === $image_alt && $game_number > 0 ) {
-			$image_alt = sprintf(
-				/* translators: %d: game number */
-				__( 'Game %d image', 'local-knowledge' ),
-				$game_number
-			);
-		} elseif ( '' === $image_alt ) {
-			$image_alt = __( 'Game image', 'local-knowledge' );
+		if ( $show_large ) {
+			if ( $image_id < 1 && '' === $image_url ) {
+				$errors[] = __( 'Current image is required.', 'local-knowledge' );
+			} elseif ( '' === $image_url ) {
+				$errors[] = __( 'Current image is unavailable or invalid.', 'local-knowledge' );
+			}
+
+			if ( '' === $image_alt && $game_number > 0 ) {
+				$image_alt = sprintf(
+					/* translators: %d: game number */
+					__( 'Game %d image', 'local-knowledge' ),
+					$game_number
+				);
+			} elseif ( '' === $image_alt ) {
+				$image_alt = __( 'Game image', 'local-knowledge' );
+			}
+		} else {
+			$image_url = '';
+			$image_alt = '';
 		}
 
 		$raw_locations = isset( $view['locations'] ) && is_array( $view['locations'] )
@@ -153,16 +172,51 @@ final class GameRenderer {
 			$locations[ $key ] = $location;
 		}
 
+		$comparison_images = array();
+
+		if ( $show_comparison ) {
+			$raw_images = isset( $view['comparison_images'] ) && is_array( $view['comparison_images'] )
+				? $view['comparison_images']
+				: array();
+
+			foreach ( $raw_images as $item ) {
+				if ( ! is_array( $item ) ) {
+					continue;
+				}
+
+				$url  = isset( $item['image_url'] ) ? esc_url_raw( (string) $item['image_url'] ) : '';
+				$full = isset( $item['full_url'] ) ? esc_url_raw( (string) $item['full_url'] ) : $url;
+				$alt  = isset( $item['image_alt'] ) ? sanitize_text_field( (string) $item['image_alt'] ) : '';
+
+				if ( '' === $url ) {
+					continue;
+				}
+
+				if ( '' === $full ) {
+					$full = $url;
+				}
+
+				$comparison_images[] = array(
+					'stage'     => isset( $item['stage'] ) ? max( 1, min( 4, absint( $item['stage'] ) ) ) : 0,
+					'image_url' => $url,
+					'full_url'  => $full,
+					'image_alt' => $alt,
+				);
+			}
+
+			if ( count( $comparison_images ) < 4 ) {
+				$errors[] = __( 'Comparison images are incomplete.', 'local-knowledge' );
+			}
+		}
+
 		if ( array() !== $errors ) {
 			$this->fail( $errors );
 		}
 
-		$is_preview      = ! empty( $view['is_preview'] );
-		$playable        = ! $is_preview && ! empty( $view['playable'] );
-		$game_locked     = $playable && ! empty( $view['game_locked'] );
-		$image_stage     = isset( $view['image_stage'] ) ? max( 1, min( 4, absint( $view['image_stage'] ) ) ) : 1;
-		$show_idk        = $playable && ! $game_locked && ! empty( $view['show_idk'] ) && 4 === $image_stage;
-		$show_thumbnails = $playable && ! empty( $view['show_thumbnails'] ) && 4 === $image_stage;
+		$is_preview  = ! empty( $view['is_preview'] );
+		$playable    = ! $is_preview && ! empty( $view['playable'] );
+		$game_locked = $playable && ! empty( $view['game_locked'] );
+		$show_idk    = $playable && ! $game_locked && $show_comparison && ! empty( $view['show_idk'] );
 
 		$correct_label = '';
 
@@ -176,34 +230,6 @@ final class GameRenderer {
 
 		if ( ! in_array( $selected, array( '1', '2', '3', '4', 'idk' ), true ) ) {
 			$selected = '';
-		}
-
-		$thumbnails = array();
-
-		if ( $show_thumbnails && isset( $view['thumbnails'] ) && is_array( $view['thumbnails'] ) ) {
-			foreach ( $view['thumbnails'] as $thumb ) {
-				if ( ! is_array( $thumb ) ) {
-					continue;
-				}
-
-				$url = isset( $thumb['image_url'] ) ? esc_url_raw( (string) $thumb['image_url'] ) : '';
-				$alt = isset( $thumb['image_alt'] ) ? sanitize_text_field( (string) $thumb['image_alt'] ) : '';
-
-				if ( '' === $url ) {
-					continue;
-				}
-
-				$thumbnails[] = array(
-					'stage'     => isset( $thumb['stage'] ) ? max( 1, min( 4, absint( $thumb['stage'] ) ) ) : 0,
-					'image_url' => $url,
-					'image_alt' => $alt,
-				);
-			}
-		}
-
-		if ( $show_thumbnails && count( $thumbnails ) < 4 ) {
-			$show_thumbnails = false;
-			$thumbnails      = array();
 		}
 
 		return array(
@@ -223,23 +249,36 @@ final class GameRenderer {
 			'correct_location_label' => $correct_label,
 			'clean_game_url'         => isset( $view['clean_game_url'] ) ? esc_url_raw( (string) $view['clean_game_url'] ) : '',
 			'strip_flash_from_url'   => ! empty( $view['strip_flash_from_url'] ),
-			'image_stage'            => $image_stage,
+			'current_view'           => $current_view,
+			'show_large_image'       => $show_large,
+			'show_comparison'        => $show_comparison,
 			'show_idk'               => $show_idk,
-			'show_thumbnails'        => $show_thumbnails,
-			'thumbnails'             => $thumbnails,
+			'comparison_images'      => $comparison_images,
 		);
 	}
 
 	/**
-	 * Enqueue Game screen styles for the current response.
+	 * Enqueue Game screen styles and optional comparison script.
+	 *
+	 * @param bool $with_comparison Whether to load comparison enlargement JS.
 	 */
-	private function enqueue_assets(): void {
+	private function enqueue_assets( bool $with_comparison ): void {
 		wp_enqueue_style(
 			self::STYLE_HANDLE,
 			LK_PLUGIN_URL . 'assets/css/game.css',
 			array(),
 			LK_VERSION
 		);
+
+		if ( $with_comparison ) {
+			wp_enqueue_script(
+				self::SCRIPT_HANDLE,
+				LK_PLUGIN_URL . 'assets/js/game-comparison.js',
+				array(),
+				LK_VERSION,
+				true
+			);
+		}
 	}
 
 	/**

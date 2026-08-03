@@ -16,7 +16,7 @@ defined( 'ABSPATH' ) || exit;
 /**
  * Evaluates public Game answer submissions using server-side temporary state.
  *
- * Image stage and completion are authoritative in GameState transients.
+ * current_view and completion are authoritative in GameState transients.
  * A short-lived signed flash token carries feedback across redirect-after-POST only.
  */
 final class GamePlay {
@@ -95,28 +95,32 @@ final class GamePlay {
 		$state   = $this->state_store->get_public_state( $game_id );
 		$extras  = $this->default_view_extras( $game_id );
 		$display = new GameDisplayData();
-		$stage   = (int) $state['image_stage'];
+		$view    = (int) $state['current_view'];
 		$result  = (string) $state['result_type'];
 		$ended   = ! empty( $state['ended'] );
 
-		$extras['clean_game_url'] = GameRoute::get_public_url( $game_number );
-		$extras['image_stage']    = $stage;
-		$extras['game_locked']    = $ended && in_array( $result, array( 'correct', 'idk' ), true );
-		$extras['show_idk']       = ! $extras['game_locked'] && 4 === $stage;
-		$extras['show_thumbnails'] = 4 === $stage;
+		$locked      = $ended && in_array( $result, array( 'correct', 'idk' ), true );
+		$comparison  = GameState::VIEW_COMPARISON === $view;
 
-		if ( $extras['show_thumbnails'] ) {
-			$extras['thumbnails'] = $display->get_thumbnails( $game_id );
+		$extras['clean_game_url']   = GameRoute::get_public_url( $game_number );
+		$extras['current_view']     = $view;
+		$extras['image_stage']      = $comparison ? 0 : $view;
+		$extras['game_locked']      = $locked;
+		$extras['show_comparison']  = $comparison;
+		$extras['show_idk']         = $comparison && ! $locked;
+		$extras['show_large_image'] = ! $comparison;
+
+		if ( $comparison ) {
+			$extras['comparison_images'] = $display->get_comparison_images( $game_id );
 		}
 
-		if ( $extras['game_locked'] ) {
+		if ( $locked ) {
 			$key = $display->get_correct_location_key( $game_id );
 
 			if ( '' !== $key ) {
 				$extras['correct_location_label'] = $display->get_location_label( $game_id, $key );
 			}
 
-			// Completed Games keep their result message on every revisit.
 			$extras['feedback'] = $result;
 		}
 
@@ -127,11 +131,17 @@ final class GamePlay {
 			$extras['selected_choice']      = (string) $flash['selected_choice'];
 			$extras['strip_flash_from_url'] = true;
 
-			// Do not let a stale flash unlock a completed Game UI.
 			if ( $extras['game_locked'] ) {
 				$extras['feedback'] = $result;
 			}
 		}
+
+		// Flash never drives the authoritative view.
+		$extras['current_view']     = $view;
+		$extras['image_stage']      = $comparison ? 0 : $view;
+		$extras['show_comparison']  = $comparison;
+		$extras['show_large_image'] = ! $comparison;
+		$extras['show_idk']         = $comparison && ! $locked;
 
 		return $extras;
 	}
@@ -187,14 +197,13 @@ final class GamePlay {
 
 		$state = $this->state_store->get_public_state( $game_id );
 
-		// Completed Games reject further submissions on the server.
 		if ( ! empty( $state['ended'] ) && in_array( (string) $state['result_type'], array( 'correct', 'idk' ), true ) ) {
 			$result['feedback'] = 'already_ended';
 			$this->state_store->save_public_state( $state );
 			return $result;
 		}
 
-		$stage = (int) $state['image_stage'];
+		$view = (int) $state['current_view'];
 
 		$choice = isset( $_POST['lk_location'] )
 			? sanitize_text_field( wp_unslash( (string) $_POST['lk_location'] ) )
@@ -208,9 +217,9 @@ final class GamePlay {
 			return $result;
 		}
 
-		// IDK is only valid once the player has reached Image 4.
+		// IDK is only valid on the comparison view.
 		if ( 'idk' === $choice ) {
-			if ( 4 !== $stage ) {
+			if ( GameState::VIEW_COMPARISON !== $view ) {
 				$result['feedback']        = 'invalid_choice';
 				$result['selected_choice'] = '';
 				$this->state_store->save_public_state( $state );
@@ -224,9 +233,9 @@ final class GamePlay {
 				return $result;
 			}
 
-			$state['image_stage'] = 4;
-			$state['ended']       = true;
-			$state['result_type'] = 'idk';
+			$state['current_view'] = GameState::VIEW_COMPARISON;
+			$state['ended']        = true;
+			$state['result_type']  = 'idk';
 			$this->state_store->save_public_state( $state );
 
 			$result['feedback'] = 'idk';
@@ -248,27 +257,28 @@ final class GamePlay {
 		}
 
 		if ( $choice === $correct ) {
-			// Correct: keep the current stage unchanged and lock the Game.
-			$state['image_stage'] = $stage;
-			$state['ended']       = true;
-			$state['result_type'] = 'correct';
+			// Correct: keep the current view and lock (Views 1–5).
+			$state['current_view'] = $view;
+			$state['ended']        = true;
+			$state['result_type']  = 'correct';
 			$this->state_store->save_public_state( $state );
 
 			$result['feedback'] = 'correct';
 			return $result;
 		}
 
-		// Incorrect: advance 1→2→3→4, then stay on 4.
-		$next_stage = match ( $stage ) {
+		// Incorrect: advance Views 1→2→3→4→5, then remain on View 5.
+		$next_view = match ( $view ) {
 			1       => 2,
 			2       => 3,
 			3       => 4,
-			default => 4,
+			4       => GameState::VIEW_COMPARISON,
+			default => GameState::VIEW_COMPARISON,
 		};
 
-		$state['image_stage'] = $next_stage;
-		$state['ended']       = false;
-		$state['result_type'] = '';
+		$state['current_view'] = $next_view;
+		$state['ended']        = false;
+		$state['result_type']  = '';
 		$this->state_store->save_public_state( $state );
 
 		$result['feedback'] = 'incorrect';
@@ -414,10 +424,12 @@ final class GamePlay {
 			'correct_location_label' => '',
 			'clean_game_url'         => '',
 			'strip_flash_from_url'   => false,
+			'current_view'           => 1,
 			'image_stage'            => 1,
+			'show_large_image'       => true,
+			'show_comparison'        => false,
 			'show_idk'               => false,
-			'show_thumbnails'        => false,
-			'thumbnails'             => array(),
+			'comparison_images'      => array(),
 		);
 	}
 

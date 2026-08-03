@@ -58,43 +58,147 @@
 	object-position: center;
 }
 
-.lk-game__thumbnails {
-	display: grid;
-	grid-template-columns: repeat(4, minmax(0, 1fr));
-	gap: 0.5rem;
+.lk-game__comparison {
 	margin: 0 0 1.5rem;
-	padding: 0;
-	list-style: none;
-	pointer-events: none;
-	user-select: none;
-	-webkit-user-select: none;
 }
 
-.lk-game__thumbnail {
+.lk-game__comparison-grid {
+	display: grid;
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+	gap: 0.75rem;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+@media (min-width: 560px) {
+	.lk-game__comparison-grid {
+		grid-template-columns: repeat(4, minmax(0, 1fr));
+	}
+}
+
+.lk-game__comparison-cell {
 	margin: 0;
 	padding: 0;
 }
 
-.lk-game__thumbnail-frame {
+.lk-game__comparison-trigger {
+	display: block;
+	width: 100%;
+	padding: 0;
+	cursor: zoom-in;
+	background: transparent;
+	border: 0;
+	border-radius: 0;
+}
+
+.lk-game__comparison-frame {
 	display: flex;
 	align-items: center;
 	justify-content: center;
 	width: 100%;
 	aspect-ratio: 4 / 3;
-	padding: 0.25rem;
+	padding: 0.35rem;
 	overflow: hidden;
 	background: #f6f7f7;
 	border: 1px solid #dcdcde;
 	box-sizing: border-box;
+	transition: transform 0.15s ease, box-shadow 0.15s ease;
 }
 
-.lk-game__thumbnail-image {
+.lk-game__comparison-image {
 	display: block;
 	width: 100%;
 	height: 100%;
 	object-fit: contain;
 	object-position: center;
 	pointer-events: none;
+}
+
+.lk-game__comparison-trigger:hover .lk-game__comparison-frame,
+.lk-game__comparison-trigger:focus .lk-game__comparison-frame,
+.lk-game__comparison-trigger:focus-visible .lk-game__comparison-frame {
+	transform: scale(1.06);
+	box-shadow: 0 0 0 2px #2271b1;
+	z-index: 1;
+}
+
+.lk-game__comparison-trigger:focus {
+	outline: none;
+}
+
+.lk-game__comparison-dialog {
+	padding: 0;
+	border: 1px solid #c3c4c7;
+	border-radius: 4px;
+	max-width: min(96vw, 48rem);
+	width: 100%;
+}
+
+.lk-game__comparison-dialog::backdrop {
+	background: rgba(0, 0, 0, 0.55);
+}
+
+.lk-game__comparison-dialog-inner {
+	position: relative;
+	padding: 1rem 1rem 1.25rem;
+	background: #fff;
+}
+
+.lk-game__comparison-dialog-title {
+	margin: 0 3.5rem 0.75rem 0;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	font-size: 1.1rem;
+}
+
+.lk-game__comparison-dialog-close {
+	position: absolute;
+	top: 0.75rem;
+	right: 0.75rem;
+	padding: 0.4rem 0.75rem;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	font-size: 0.95rem;
+	font-weight: 600;
+	color: #1d2327;
+	cursor: pointer;
+	background: #f0f0f1;
+	border: 1px solid #c3c4c7;
+	border-radius: 3px;
+}
+
+.lk-game__comparison-dialog-figure {
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin: 0;
+	padding: 0.5rem;
+	min-height: 12rem;
+	max-height: min(70vh, 36rem);
+	background: #f6f7f7;
+	border: 1px solid #dcdcde;
+	box-sizing: border-box;
+}
+
+.lk-game__comparison-dialog-image {
+	display: block;
+	max-width: 100%;
+	max-height: min(70vh, 36rem);
+	width: auto;
+	height: auto;
+	object-fit: contain;
+	object-position: center;
+}
+
+.screen-reader-text {
+	position: absolute;
+	width: 1px;
+	height: 1px;
+	padding: 0;
+	margin: -1px;
+	overflow: hidden;
+	clip: rect(0, 0, 0, 0);
+	white-space: nowrap;
+	border: 0;
 }
 
 .lk-game__form {
@@ -199,5 +303,9 @@
 
 	.lk-game__image-frame {
 		aspect-ratio: 1 / 1;
+	}
+
+	.lk-game__comparison-grid {
+		grid-template-columns: 1fr;
 	}
 }

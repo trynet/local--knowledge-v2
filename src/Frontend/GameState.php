@@ -40,6 +40,21 @@ final class GameState {
 	public const MODE_PUBLIC = 'public';
 
 	/**
+	 * Lowest individual view.
+	 */
+	public const VIEW_MIN = 1;
+
+	/**
+	 * Highest individual image view.
+	 */
+	public const VIEW_IMAGE_MAX = 4;
+
+	/**
+	 * Comparison (fifth) view.
+	 */
+	public const VIEW_COMPARISON = 5;
+
+	/**
 	 * Visitor ID resolved for the current request (request-local memo).
 	 */
 	private string $visitor_id = '';
@@ -47,13 +62,11 @@ final class GameState {
 	/**
 	 * Load or initialize public gameplay state for a Game.
 	 *
-	 * Does not overwrite an existing unfinished/completed stage with Image 1.
-	 *
 	 * @param int $game_id Game post ID.
 	 * @return array{
 	 *     game_id: int,
 	 *     mode: string,
-	 *     image_stage: int,
+	 *     current_view: int,
 	 *     ended: bool,
 	 *     result_type: string
 	 * }
@@ -96,24 +109,24 @@ final class GameState {
 	}
 
 	/**
-	 * Build the initial Image 1 unfinished state.
+	 * Build the initial View 1 unfinished state.
 	 *
 	 * @param int $game_id Game post ID.
 	 * @return array{
 	 *     game_id: int,
 	 *     mode: string,
-	 *     image_stage: int,
+	 *     current_view: int,
 	 *     ended: bool,
 	 *     result_type: string
 	 * }
 	 */
 	public function initial_state( int $game_id ): array {
 		return array(
-			'game_id'     => absint( $game_id ),
-			'mode'        => self::MODE_PUBLIC,
-			'image_stage' => 1,
-			'ended'       => false,
-			'result_type' => '',
+			'game_id'      => absint( $game_id ),
+			'mode'         => self::MODE_PUBLIC,
+			'current_view' => self::VIEW_MIN,
+			'ended'        => false,
+			'result_type'  => '',
 		);
 	}
 
@@ -129,29 +142,46 @@ final class GameState {
 			return null;
 		}
 
-		$state = $this->normalize_state( $raw );
-
-		if ( $state['game_id'] !== $game_id ) {
+		if ( ! isset( $raw['mode'] ) || self::MODE_PUBLIC !== sanitize_key( (string) $raw['mode'] ) ) {
 			return null;
 		}
 
-		if ( self::MODE_PUBLIC !== $state['mode'] ) {
+		if ( ! isset( $raw['game_id'] ) || absint( $raw['game_id'] ) !== $game_id ) {
 			return null;
 		}
 
-		if ( $state['image_stage'] < 1 || $state['image_stage'] > 4 ) {
+		$view = $this->read_view( $raw );
+
+		if ( $view < self::VIEW_MIN || $view > self::VIEW_COMPARISON ) {
 			return null;
 		}
 
-		if ( $state['ended'] && ! in_array( $state['result_type'], array( 'correct', 'idk' ), true ) ) {
+		$ended  = ! empty( $raw['ended'] );
+		$result = isset( $raw['result_type'] ) ? sanitize_key( (string) $raw['result_type'] ) : '';
+
+		if ( $ended && ! in_array( $result, array( 'correct', 'idk' ), true ) ) {
 			return null;
 		}
 
-		if ( ! $state['ended'] && '' !== $state['result_type'] ) {
-			$state['result_type'] = '';
+		return $this->normalize_state( $raw );
+	}
+
+	/**
+	 * Resolve current_view, migrating legacy image_stage (1–4).
+	 *
+	 * @param array<string, mixed> $state Raw or normalized state.
+	 */
+	private function read_view( array $state ): int {
+		if ( isset( $state['current_view'] ) ) {
+			return absint( $state['current_view'] );
 		}
 
-		return $state;
+		// Pre-6D-2 (revised) states stored image_stage for Views 1–4 only.
+		if ( isset( $state['image_stage'] ) ) {
+			return absint( $state['image_stage'] );
+		}
+
+		return self::VIEW_MIN;
 	}
 
 	/**
@@ -161,31 +191,29 @@ final class GameState {
 	 * @return array{
 	 *     game_id: int,
 	 *     mode: string,
-	 *     image_stage: int,
+	 *     current_view: int,
 	 *     ended: bool,
 	 *     result_type: string
 	 * }
 	 */
 	private function normalize_state( array $state ): array {
 		$game_id = isset( $state['game_id'] ) ? absint( $state['game_id'] ) : 0;
-		$stage   = isset( $state['image_stage'] ) ? absint( $state['image_stage'] ) : 1;
 		$ended   = ! empty( $state['ended'] );
 		$result  = isset( $state['result_type'] ) ? sanitize_key( (string) $state['result_type'] ) : '';
+		$view    = $this->read_view( $state );
 
-		if ( $stage < 1 || $stage > 4 ) {
-			$stage = 1;
-		}
+		$view = max( self::VIEW_MIN, min( self::VIEW_COMPARISON, $view ) );
 
 		if ( ! in_array( $result, array( 'correct', 'idk' ), true ) ) {
 			$result = '';
 		}
 
 		return array(
-			'game_id'     => $game_id,
-			'mode'        => self::MODE_PUBLIC,
-			'image_stage' => $stage,
-			'ended'       => $ended,
-			'result_type' => $ended ? $result : '',
+			'game_id'      => $game_id,
+			'mode'         => self::MODE_PUBLIC,
+			'current_view' => $view,
+			'ended'        => $ended,
+			'result_type'  => $ended ? $result : '',
 		);
 	}
 
@@ -228,9 +256,6 @@ final class GameState {
 	/**
 	 * Build a transient key scoped by visitor, Game, and mode.
 	 *
-	 * Uses a stable hash of the scope values only (not a rotating salt) so
-	 * save and load always share the same key for the same visitor/Game.
-	 *
 	 * @param string $visitor_id Opaque visitor ID.
 	 * @param int    $game_id    Game post ID.
 	 * @param string $mode       Rendering mode.
@@ -241,9 +266,6 @@ final class GameState {
 
 	/**
 	 * Resolve the anonymous visitor identifier for this request.
-	 *
-	 * Reuses the cookie value when present. Creates a new ID only once per
-	 * request when the cookie is missing — never on every call.
 	 */
 	private function get_visitor_id(): string {
 		if ( '' !== $this->visitor_id ) {
@@ -285,7 +307,6 @@ final class GameState {
 			return;
 		}
 
-		// Keep the request-local copy readable immediately.
 		$_COOKIE[ self::COOKIE_NAME ] = $visitor_id;
 
 		if ( headers_sent() ) {
@@ -298,7 +319,6 @@ final class GameState {
 			$domain = COOKIE_DOMAIN;
 		}
 
-		// Site-root path so the cookie is sent for /local-knowledge/game/... .
 		$path = '/';
 
 		setcookie(

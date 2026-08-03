@@ -153,12 +153,33 @@ final class GameRoute {
 		$play->maybe_redirect_after_post( $game_id, $game_number );
 
 		$extras = $play->get_view_extras( $game_id, $game_number );
-		$stage  = isset( $extras['image_stage'] ) ? max( 1, min( 4, absint( $extras['image_stage'] ) ) ) : 1;
+		$view_n = isset( $extras['current_view'] ) ? absint( $extras['current_view'] ) : 1;
+		$view_n = max( 1, min( GameState::VIEW_COMPARISON, $view_n ) );
 
-		// Resolve the image for the saved stage, then merge play extras (stage wins).
-		$view                = $display->build_view( $game_id, false, $stage );
-		$view                = array_merge( $view, $extras );
-		$view['image_stage'] = $stage;
+		$is_comparison = GameState::VIEW_COMPARISON === $view_n;
+
+		if ( $is_comparison ) {
+			// Comparison View 5: locations only from build_view; no single large image.
+			$view                       = $display->build_view( $game_id, false, 1 );
+			$view['image_id']           = 0;
+			$view['image_url']          = '';
+			$view['image_alt']          = '';
+			$view['image_stage']        = 0;
+			$view                       = array_merge( $view, $extras );
+			$view['current_view']       = GameState::VIEW_COMPARISON;
+			$view['show_comparison']    = true;
+			$view['show_large_image']   = false;
+			$view['comparison_images']  = isset( $extras['comparison_images'] ) && is_array( $extras['comparison_images'] )
+				? $extras['comparison_images']
+				: $display->get_comparison_images( $game_id );
+		} else {
+			$view                       = $display->build_view( $game_id, false, $view_n );
+			$view                       = array_merge( $view, $extras );
+			$view['current_view']       = $view_n;
+			$view['image_stage']        = $view_n;
+			$view['show_comparison']    = false;
+			$view['show_large_image']   = true;
+		}
 
 		$renderer = new GameRenderer();
 		$renderer->render( $view );
