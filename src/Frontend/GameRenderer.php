@@ -57,6 +57,17 @@ final class GameRenderer {
 		$show_comparison        = $prepared['show_comparison'];
 		$show_idk               = $prepared['show_idk'];
 		$comparison_images      = $prepared['comparison_images'];
+		$show_completion        = $prepared['show_completion'];
+		$completion_result      = $prepared['completion_result'];
+		$show_registration      = $prepared['show_registration'];
+		$registration_prompt    = $prepared['registration_prompt'];
+		$registration_success   = $prepared['registration_success'];
+		$registration_success_message = $prepared['registration_success_message'];
+		$registration_errors    = $prepared['registration_errors'];
+		$registration_values    = $prepared['registration_values'];
+		$registration_nonce_action = $prepared['registration_nonce_action'];
+		$registration_nonce_field  = $prepared['registration_nonce_field'];
+		$registration_form_action_value = $prepared['registration_form_action_value'];
 
 		?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -232,28 +243,86 @@ final class GameRenderer {
 			$selected = '';
 		}
 
+		$feedback_key = isset( $view['feedback'] ) ? sanitize_key( (string) $view['feedback'] ) : '';
+		$completion_result = isset( $view['completion_result'] ) ? sanitize_key( (string) $view['completion_result'] ) : '';
+
+		if ( ! in_array( $completion_result, array( 'correct', 'idk' ), true ) ) {
+			// Fall back to authoritative locked feedback from GamePlay (Views 1–5).
+			$completion_result = in_array( $feedback_key, array( 'correct', 'idk' ), true )
+				? $feedback_key
+				: '';
+		}
+
+		// Completion follows game_locked + result type — not an unrelated view flag
+		// that can stay false on View 1 after a correct lock.
+		$show_completion = $playable && $game_locked && (
+			! empty( $view['show_completion'] )
+			|| in_array( $completion_result, array( 'correct', 'idk' ), true )
+		);
+
+		$show_registration = $show_completion && ! empty( $view['show_registration'] );
+		$registration_prompt = isset( $view['registration_prompt'] )
+			? sanitize_text_field( (string) $view['registration_prompt'] )
+			: '';
+		$registration_success = $show_registration && ! empty( $view['registration_success'] );
+		$registration_success_message = isset( $view['registration_success_message'] )
+			? sanitize_text_field( (string) $view['registration_success_message'] )
+			: '';
+
+		$registration_errors = array();
+
+		if ( isset( $view['registration_errors'] ) && is_array( $view['registration_errors'] ) ) {
+			foreach ( $view['registration_errors'] as $error ) {
+				if ( is_string( $error ) && '' !== $error ) {
+					$registration_errors[] = sanitize_text_field( $error );
+				}
+			}
+		}
+
+		$raw_values = isset( $view['registration_values'] ) && is_array( $view['registration_values'] )
+			? $view['registration_values']
+			: array();
+
+		$registration_values = array(
+			'first_name' => isset( $raw_values['first_name'] ) ? sanitize_text_field( (string) $raw_values['first_name'] ) : '',
+			'last_name'  => isset( $raw_values['last_name'] ) ? sanitize_text_field( (string) $raw_values['last_name'] ) : '',
+			'email'      => isset( $raw_values['email'] ) ? sanitize_text_field( (string) $raw_values['email'] ) : '',
+			'username'   => isset( $raw_values['username'] ) ? sanitize_text_field( (string) $raw_values['username'] ) : '',
+		);
+
 		return array(
-			'game_number'            => $game_number,
-			'image_url'              => $image_url,
-			'image_alt'              => $image_alt,
-			'locations'              => $locations,
-			'is_preview'             => $is_preview,
-			'playable'               => $playable,
-			'game_id'                => isset( $view['game_id'] ) ? absint( $view['game_id'] ) : 0,
-			'nonce_action'           => isset( $view['nonce_action'] ) ? sanitize_text_field( (string) $view['nonce_action'] ) : '',
-			'nonce_field'            => isset( $view['nonce_field'] ) ? sanitize_key( (string) $view['nonce_field'] ) : '',
-			'form_action_value'      => isset( $view['form_action_value'] ) ? sanitize_key( (string) $view['form_action_value'] ) : '',
-			'feedback'               => isset( $view['feedback'] ) ? sanitize_key( (string) $view['feedback'] ) : '',
-			'selected_choice'        => $selected,
-			'game_locked'            => $game_locked,
-			'correct_location_label' => $correct_label,
-			'clean_game_url'         => isset( $view['clean_game_url'] ) ? esc_url_raw( (string) $view['clean_game_url'] ) : '',
-			'strip_flash_from_url'   => ! empty( $view['strip_flash_from_url'] ),
-			'current_view'           => $current_view,
-			'show_large_image'       => $show_large,
-			'show_comparison'        => $show_comparison,
-			'show_idk'               => $show_idk,
-			'comparison_images'      => $comparison_images,
+			'game_number'                     => $game_number,
+			'image_url'                       => $image_url,
+			'image_alt'                       => $image_alt,
+			'locations'                       => $locations,
+			'is_preview'                      => $is_preview,
+			'playable'                        => $playable,
+			'game_id'                         => isset( $view['game_id'] ) ? absint( $view['game_id'] ) : 0,
+			'nonce_action'                    => isset( $view['nonce_action'] ) ? sanitize_text_field( (string) $view['nonce_action'] ) : '',
+			'nonce_field'                     => isset( $view['nonce_field'] ) ? sanitize_key( (string) $view['nonce_field'] ) : '',
+			'form_action_value'               => isset( $view['form_action_value'] ) ? sanitize_key( (string) $view['form_action_value'] ) : '',
+			'feedback'                        => isset( $view['feedback'] ) ? sanitize_key( (string) $view['feedback'] ) : '',
+			'selected_choice'                 => $selected,
+			'game_locked'                     => $game_locked,
+			'correct_location_label'          => $correct_label,
+			'clean_game_url'                  => isset( $view['clean_game_url'] ) ? esc_url_raw( (string) $view['clean_game_url'] ) : '',
+			'strip_flash_from_url'            => ! empty( $view['strip_flash_from_url'] ),
+			'current_view'                    => $current_view,
+			'show_large_image'                => $show_large,
+			'show_comparison'                 => $show_comparison,
+			'show_idk'                        => $show_idk,
+			'comparison_images'               => $comparison_images,
+			'show_completion'                 => $show_completion,
+			'completion_result'               => $completion_result,
+			'show_registration'               => $show_registration,
+			'registration_prompt'             => $registration_prompt,
+			'registration_success'            => $registration_success,
+			'registration_success_message'    => $registration_success_message,
+			'registration_errors'             => $registration_errors,
+			'registration_values'             => $registration_values,
+			'registration_nonce_action'       => isset( $view['registration_nonce_action'] ) ? sanitize_text_field( (string) $view['registration_nonce_action'] ) : '',
+			'registration_nonce_field'        => isset( $view['registration_nonce_field'] ) ? sanitize_key( (string) $view['registration_nonce_field'] ) : 'lk_register_nonce',
+			'registration_form_action_value'  => isset( $view['registration_form_action_value'] ) ? sanitize_key( (string) $view['registration_form_action_value'] ) : RegistrationGateway::FORM_ACTION,
 		);
 	}
 

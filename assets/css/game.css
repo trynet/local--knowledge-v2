@@ -290,6 +290,93 @@
 	border-radius: 3px;
 }
 
+.lk-game__completion {
+	margin: 0 0 1.5rem;
+}
+
+.lk-game__completion-title,
+.lk-game__registration-title {
+	margin: 0 0 0.75rem;
+	font-size: 1.35rem;
+	line-height: 1.25;
+}
+
+.lk-game__registration-prompt {
+	margin: 1rem 0 0;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	font-size: 1rem;
+	line-height: 1.45;
+	font-weight: 600;
+}
+
+.lk-game__registration {
+	margin: 0 0 0.5rem;
+	padding: 1rem;
+	border: 1px solid #c3c4c7;
+	background: #f6f7f7;
+}
+
+.lk-game__registration-errors {
+	margin: 0 0 1rem;
+	padding: 0.75rem 1rem;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	font-size: 0.95rem;
+	color: #3c434a;
+	background: #fcf0f1;
+	border: 1px solid #d63638;
+}
+
+.lk-game__registration-errors-heading {
+	margin: 0 0 0.4rem;
+	font-weight: 600;
+}
+
+.lk-game__registration-errors ul {
+	margin: 0;
+	padding-left: 1.25rem;
+}
+
+.lk-game__registration-success {
+	margin: 0 0 1rem;
+	padding: 0.85rem 1rem;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+	color: #1e4620;
+	background: #edfaef;
+	border: 1px solid #68de7c;
+}
+
+.lk-game__registration-success p {
+	margin: 0;
+}
+
+.lk-game__registration-form {
+	margin: 0;
+}
+
+.lk-game__field {
+	margin: 0 0 0.9rem;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.lk-game__field label {
+	display: block;
+	margin: 0 0 0.35rem;
+	font-size: 0.95rem;
+	font-weight: 600;
+}
+
+.lk-game__field input[type="text"],
+.lk-game__field input[type="email"] {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 28rem;
+	padding: 0.5rem 0.65rem;
+	font-size: 1rem;
+	line-height: 1.3;
+	border: 1px solid #8c8f94;
+	border-radius: 3px;
+}
+
 .lk-game-screen--preview .lk-game__submit {
 	cursor: default;
 }

@@ -149,10 +149,19 @@ final class GameRoute {
 		// Prevent browsers from serving a cached Image 1 page after gameplay advances.
 		nocache_headers();
 
-		$play = new GamePlay();
-		$play->maybe_redirect_after_post( $game_id, $game_number );
+		// One GameState instance so play lock flags and registration eligibility
+		// read the same authoritative visitor/Game transient after redirect-after-POST.
+		$state_store  = new GameState();
+		$play         = new GamePlay( $state_store );
+		$registration = new RegistrationGateway( $state_store );
 
+		$play->maybe_redirect_after_post( $game_id, $game_number );
+		$registration->maybe_process( $game_id, $game_number );
+
+		$state  = $state_store->get_public_state( $game_id );
 		$extras = $play->get_view_extras( $game_id, $game_number );
+		$extras = array_merge( $extras, $registration->get_view_extras( $game_id, $game_number, $state ) );
+
 		$view_n = isset( $extras['current_view'] ) ? absint( $extras['current_view'] ) : 1;
 		$view_n = max( 1, min( GameState::VIEW_COMPARISON, $view_n ) );
 
@@ -160,25 +169,25 @@ final class GameRoute {
 
 		if ( $is_comparison ) {
 			// Comparison View 5: locations only from build_view; no single large image.
-			$view                       = $display->build_view( $game_id, false, 1 );
-			$view['image_id']           = 0;
-			$view['image_url']          = '';
-			$view['image_alt']          = '';
-			$view['image_stage']        = 0;
-			$view                       = array_merge( $view, $extras );
-			$view['current_view']       = GameState::VIEW_COMPARISON;
-			$view['show_comparison']    = true;
-			$view['show_large_image']   = false;
-			$view['comparison_images']  = isset( $extras['comparison_images'] ) && is_array( $extras['comparison_images'] )
+			$view                      = $display->build_view( $game_id, false, 1 );
+			$view['image_id']          = 0;
+			$view['image_url']         = '';
+			$view['image_alt']         = '';
+			$view['image_stage']       = 0;
+			$view                      = array_merge( $view, $extras );
+			$view['current_view']      = GameState::VIEW_COMPARISON;
+			$view['show_comparison']   = true;
+			$view['show_large_image']  = false;
+			$view['comparison_images'] = isset( $extras['comparison_images'] ) && is_array( $extras['comparison_images'] )
 				? $extras['comparison_images']
 				: $display->get_comparison_images( $game_id );
 		} else {
-			$view                       = $display->build_view( $game_id, false, $view_n );
-			$view                       = array_merge( $view, $extras );
-			$view['current_view']       = $view_n;
-			$view['image_stage']        = $view_n;
-			$view['show_comparison']    = false;
-			$view['show_large_image']   = true;
+			$view                     = $display->build_view( $game_id, false, $view_n );
+			$view                     = array_merge( $view, $extras );
+			$view['current_view']     = $view_n;
+			$view['image_stage']      = $view_n;
+			$view['show_comparison']  = false;
+			$view['show_large_image'] = true;
 		}
 
 		$renderer = new GameRenderer();

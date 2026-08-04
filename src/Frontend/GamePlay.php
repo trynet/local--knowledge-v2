@@ -121,7 +121,9 @@ final class GamePlay {
 				$extras['correct_location_label'] = $display->get_location_label( $game_id, $key );
 			}
 
-			$extras['feedback'] = $result;
+			$extras['feedback']          = $result;
+			$extras['show_completion']   = true;
+			$extras['completion_result'] = $result;
 		}
 
 		$flash = $this->decode_flash_from_request( $game_id );
@@ -422,6 +424,8 @@ final class GamePlay {
 			'selected_choice'        => '',
 			'game_locked'            => false,
 			'correct_location_label' => '',
+			'show_completion'        => false,
+			'completion_result'      => '',
 			'clean_game_url'         => '',
 			'strip_flash_from_url'   => false,
 			'current_view'           => 1,

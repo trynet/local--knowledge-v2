@@ -22,6 +22,17 @@
  * - bool   $show_comparison
  * - bool   $show_idk
  * - array  $comparison_images
+ * - bool   $show_completion
+ * - string $completion_result
+ * - bool   $show_registration
+ * - string $registration_prompt
+ * - bool   $registration_success
+ * - string $registration_success_message
+ * - array  $registration_errors
+ * - array  $registration_values
+ * - string $registration_nonce_action
+ * - string $registration_nonce_field
+ * - string $registration_form_action_value
  *
  * @package JoyOfCode\LocalKnowledge
  */
@@ -47,6 +58,22 @@ $show_large_image       = ! empty( $show_large_image );
 $show_comparison        = ! empty( $show_comparison );
 $show_idk               = ! empty( $show_idk );
 $comparison_images      = isset( $comparison_images ) && is_array( $comparison_images ) ? $comparison_images : array();
+$show_completion        = ! empty( $show_completion );
+$completion_result      = isset( $completion_result ) ? (string) $completion_result : '';
+$show_registration      = ! empty( $show_registration );
+$registration_prompt    = isset( $registration_prompt ) ? (string) $registration_prompt : '';
+$registration_success   = ! empty( $registration_success );
+$registration_success_message = isset( $registration_success_message ) ? (string) $registration_success_message : '';
+$registration_errors    = isset( $registration_errors ) && is_array( $registration_errors ) ? $registration_errors : array();
+$registration_values    = isset( $registration_values ) && is_array( $registration_values ) ? $registration_values : array();
+$reg_first              = isset( $registration_values['first_name'] ) ? (string) $registration_values['first_name'] : '';
+$reg_last               = isset( $registration_values['last_name'] ) ? (string) $registration_values['last_name'] : '';
+$reg_email              = isset( $registration_values['email'] ) ? (string) $registration_values['email'] : '';
+$reg_username           = isset( $registration_values['username'] ) ? (string) $registration_values['username'] : '';
+$registration_nonce_action = isset( $registration_nonce_action ) ? (string) $registration_nonce_action : '';
+$registration_nonce_field  = isset( $registration_nonce_field ) ? (string) $registration_nonce_field : 'lk_register_nonce';
+$registration_form_action_value = isset( $registration_form_action_value ) ? (string) $registration_form_action_value : '';
+$has_reg_errors         = array() !== $registration_errors;
 ?>
 <main class="lk-game<?php echo $show_comparison ? ' lk-game--comparison' : ''; ?>">
 	<?php if ( $is_preview ) : ?>
@@ -138,39 +165,140 @@ $comparison_images      = isset( $comparison_images ) && is_array( $comparison_i
 		</section>
 	<?php endif; ?>
 
-	<?php if ( $playable && '' !== $feedback ) : ?>
+	<?php
+	// Locked correct/IDK completion — gate on game_locked, not an unrelated flag
+	// (e.g. show_comparison / show_idk) that is false after a View 1 correct answer.
+	$completion_type = '' !== $completion_result ? $completion_result : $feedback;
+	?>
+	<?php if ( $playable && $game_locked && in_array( $completion_type, array( 'correct', 'idk' ), true ) ) : ?>
+		<section class="lk-game__completion" aria-labelledby="lk-game-complete-heading">
+			<h2 id="lk-game-complete-heading" class="lk-game__completion-title">
+				<?php esc_html_e( 'Game Complete', 'local-knowledge' ); ?>
+			</h2>
+
+			<div class="lk-game__feedback lk-game__feedback--<?php echo esc_attr( $completion_type ); ?>" role="status">
+				<?php if ( 'correct' === $completion_type ) : ?>
+					<p class="lk-game__feedback-message">
+						<?php esc_html_e( 'Correct! You identified the location.', 'local-knowledge' ); ?>
+					</p>
+				<?php else : ?>
+					<p class="lk-game__feedback-message">
+						<?php esc_html_e( 'Game complete. No correct location guess was submitted.', 'local-knowledge' ); ?>
+					</p>
+				<?php endif; ?>
+
+				<?php if ( '' !== $correct_location_label ) : ?>
+					<p class="lk-game__correct-answer">
+						<?php
+						printf(
+							/* translators: %s: correct location label */
+							esc_html__( 'The correct location is: %s', 'local-knowledge' ),
+							esc_html( $correct_location_label )
+						);
+						?>
+					</p>
+				<?php endif; ?>
+			</div>
+
+			<?php if ( $show_registration && '' !== $registration_prompt ) : ?>
+				<p class="lk-game__registration-prompt">
+					<?php echo esc_html( $registration_prompt ); ?>
+				</p>
+			<?php endif; ?>
+		</section>
+
+		<?php if ( $show_registration ) : ?>
+			<?php if ( $registration_success && '' !== $registration_success_message ) : ?>
+				<div class="lk-game__registration-success" role="status" aria-live="polite">
+					<p><?php echo esc_html( $registration_success_message ); ?></p>
+				</div>
+			<?php else : ?>
+				<section class="lk-game__registration" aria-labelledby="lk-registration-heading">
+					<h2 id="lk-registration-heading" class="lk-game__registration-title">
+						<?php esc_html_e( 'Register', 'local-knowledge' ); ?>
+					</h2>
+
+					<?php if ( $has_reg_errors ) : ?>
+						<div class="lk-game__registration-errors" role="alert" id="lk-registration-errors">
+							<p class="lk-game__registration-errors-heading">
+								<?php esc_html_e( 'Please fix the following:', 'local-knowledge' ); ?>
+							</p>
+							<ul>
+								<?php foreach ( $registration_errors as $reg_error ) : ?>
+									<li><?php echo esc_html( (string) $reg_error ); ?></li>
+								<?php endforeach; ?>
+							</ul>
+						</div>
+					<?php endif; ?>
+
+					<form class="lk-game__registration-form" method="post" action="" autocomplete="on">
+						<input type="hidden" name="lk_game_action" value="<?php echo esc_attr( $registration_form_action_value ); ?>" />
+						<input type="hidden" name="lk_game_id" value="<?php echo esc_attr( (string) $game_id ); ?>" />
+						<?php wp_nonce_field( $registration_nonce_action, $registration_nonce_field ); ?>
+
+						<p class="lk-game__field">
+							<label for="lk-first-name"><?php esc_html_e( 'First Name', 'local-knowledge' ); ?></label>
+							<input
+								type="text"
+								id="lk-first-name"
+								name="lk_first_name"
+								value="<?php echo esc_attr( $reg_first ); ?>"
+								autocomplete="given-name"
+								<?php echo $has_reg_errors ? 'aria-describedby="lk-registration-errors"' : ''; ?>
+								required
+							/>
+						</p>
+
+						<p class="lk-game__field">
+							<label for="lk-last-name"><?php esc_html_e( 'Last Name', 'local-knowledge' ); ?></label>
+							<input
+								type="text"
+								id="lk-last-name"
+								name="lk_last_name"
+								value="<?php echo esc_attr( $reg_last ); ?>"
+								autocomplete="family-name"
+								<?php echo $has_reg_errors ? 'aria-describedby="lk-registration-errors"' : ''; ?>
+								required
+							/>
+						</p>
+
+						<p class="lk-game__field">
+							<label for="lk-email"><?php esc_html_e( 'Email Address', 'local-knowledge' ); ?></label>
+							<input
+								type="email"
+								id="lk-email"
+								name="lk_email"
+								value="<?php echo esc_attr( $reg_email ); ?>"
+								autocomplete="email"
+								<?php echo $has_reg_errors ? 'aria-describedby="lk-registration-errors"' : ''; ?>
+								required
+							/>
+						</p>
+
+						<p class="lk-game__field">
+							<label for="lk-username"><?php esc_html_e( 'Username', 'local-knowledge' ); ?></label>
+							<input
+								type="text"
+								id="lk-username"
+								name="lk_username"
+								value="<?php echo esc_attr( $reg_username ); ?>"
+								autocomplete="username"
+								<?php echo $has_reg_errors ? 'aria-describedby="lk-registration-errors"' : ''; ?>
+								required
+							/>
+						</p>
+
+						<button type="submit" class="lk-game__submit lk-game__submit--register">
+							<?php esc_html_e( 'Register', 'local-knowledge' ); ?>
+						</button>
+					</form>
+				</section>
+			<?php endif; ?>
+		<?php endif; ?>
+
+	<?php elseif ( $playable && '' !== $feedback ) : ?>
 		<div class="lk-game__feedback lk-game__feedback--<?php echo esc_attr( $feedback ); ?>" role="status" aria-live="polite">
-			<?php if ( 'correct' === $feedback ) : ?>
-				<p class="lk-game__feedback-message">
-					<?php esc_html_e( 'Correct! You identified the location.', 'local-knowledge' ); ?>
-				</p>
-				<?php if ( '' !== $correct_location_label ) : ?>
-					<p class="lk-game__correct-answer">
-						<?php
-						printf(
-							/* translators: %s: correct location label */
-							esc_html__( 'The correct location is: %s', 'local-knowledge' ),
-							esc_html( $correct_location_label )
-						);
-						?>
-					</p>
-				<?php endif; ?>
-			<?php elseif ( 'idk' === $feedback ) : ?>
-				<p class="lk-game__feedback-message">
-					<?php esc_html_e( 'Game complete. No correct location guess was submitted.', 'local-knowledge' ); ?>
-				</p>
-				<?php if ( '' !== $correct_location_label ) : ?>
-					<p class="lk-game__correct-answer">
-						<?php
-						printf(
-							/* translators: %s: correct location label */
-							esc_html__( 'The correct location is: %s', 'local-knowledge' ),
-							esc_html( $correct_location_label )
-						);
-						?>
-					</p>
-				<?php endif; ?>
-			<?php elseif ( 'incorrect' === $feedback ) : ?>
+			<?php if ( 'incorrect' === $feedback ) : ?>
 				<p class="lk-game__feedback-message">
 					<?php esc_html_e( 'That answer is incorrect. Please try again.', 'local-knowledge' ); ?>
 				</p>

@@ -15,6 +15,7 @@ use JoyOfCode\LocalKnowledge\Admin\GamePreview;
 use JoyOfCode\LocalKnowledge\Admin\GameValidator;
 use JoyOfCode\LocalKnowledge\Frontend\GamePlay;
 use JoyOfCode\LocalKnowledge\Frontend\GameRoute;
+use JoyOfCode\LocalKnowledge\Frontend\RegistrationGateway;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -44,5 +45,8 @@ final class Plugin {
 
 		$game_play = new GamePlay();
 		$game_play->register();
+
+		$registration = new RegistrationGateway();
+		$registration->register();
 	}
 }
