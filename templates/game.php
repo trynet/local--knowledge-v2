@@ -74,6 +74,19 @@ $registration_nonce_action = isset( $registration_nonce_action ) ? (string) $reg
 $registration_nonce_field  = isset( $registration_nonce_field ) ? (string) $registration_nonce_field : 'lk_register_nonce';
 $registration_form_action_value = isset( $registration_form_action_value ) ? (string) $registration_form_action_value : '';
 $has_reg_errors         = array() !== $registration_errors;
+$registration_info      = isset( $registration_info ) ? (string) $registration_info : '';
+$show_post_registration = ! empty( $show_post_registration );
+$post_registration_title = isset( $post_registration_title ) ? (string) $post_registration_title : '';
+$post_registration_messages = isset( $post_registration_messages ) && is_array( $post_registration_messages ) ? $post_registration_messages : array();
+if ( ! isset( $player_points ) || null === $player_points ) {
+	$player_points = null;
+} else {
+	$player_points = (int) $player_points;
+}
+$show_continue_game_2   = ! empty( $show_continue_game_2 );
+$continue_game_2_url    = isset( $continue_game_2_url ) ? (string) $continue_game_2_url : '';
+$continue_game_2_label  = isset( $continue_game_2_label ) ? (string) $continue_game_2_label : '';
+$game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavailable : '';
 ?>
 <main class="lk-game<?php echo $show_comparison ? ' lk-game--comparison' : ''; ?>">
 	<?php if ( $is_preview ) : ?>
@@ -207,7 +220,51 @@ $has_reg_errors         = array() !== $registration_errors;
 			<?php endif; ?>
 		</section>
 
-		<?php if ( $show_registration ) : ?>
+		<?php if ( ! empty( $show_post_registration ) ) : ?>
+			<section class="lk-game__post-registration" aria-labelledby="lk-post-registration-heading">
+				<h2 id="lk-post-registration-heading" class="lk-game__post-registration-title">
+					<?php echo esc_html( '' !== $post_registration_title ? $post_registration_title : __( 'Account created', 'local-knowledge' ) ); ?>
+				</h2>
+
+				<div class="lk-game__post-registration-body" role="status">
+					<?php if ( isset( $post_registration_messages ) && is_array( $post_registration_messages ) ) : ?>
+						<?php foreach ( $post_registration_messages as $post_msg ) : ?>
+							<p><?php echo esc_html( (string) $post_msg ); ?></p>
+						<?php endforeach; ?>
+					<?php endif; ?>
+
+					<?php if ( null !== $player_points ) : ?>
+						<p class="lk-game__player-points">
+							<?php
+							printf(
+								/* translators: %d: points earned */
+								esc_html__( 'Game 1 score: %d points', 'local-knowledge' ),
+								(int) $player_points
+							);
+							?>
+						</p>
+					<?php endif; ?>
+				</div>
+
+				<?php if ( ! empty( $show_continue_game_2 ) && '' !== $continue_game_2_url ) : ?>
+					<p class="lk-game__continue">
+						<a class="lk-game__submit lk-game__submit--continue" href="<?php echo esc_url( $continue_game_2_url ); ?>">
+							<?php echo esc_html( '' !== $continue_game_2_label ? $continue_game_2_label : __( 'Continue to Game 2', 'local-knowledge' ) ); ?>
+						</a>
+					</p>
+				<?php elseif ( '' !== $game_2_unavailable ) : ?>
+					<p class="lk-game__game2-unavailable" role="status">
+						<?php echo esc_html( $game_2_unavailable ); ?>
+					</p>
+				<?php endif; ?>
+			</section>
+
+		<?php elseif ( '' !== $registration_info ) : ?>
+			<div class="lk-game__registration-info" role="status">
+				<p><?php echo esc_html( $registration_info ); ?></p>
+			</div>
+
+		<?php elseif ( $show_registration ) : ?>
 			<?php if ( $registration_success && '' !== $registration_success_message ) : ?>
 				<div class="lk-game__registration-success" role="status" aria-live="polite">
 					<p><?php echo esc_html( $registration_success_message ); ?></p>

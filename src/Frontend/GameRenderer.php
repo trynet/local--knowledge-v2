@@ -68,6 +68,15 @@ final class GameRenderer {
 		$registration_nonce_action = $prepared['registration_nonce_action'];
 		$registration_nonce_field  = $prepared['registration_nonce_field'];
 		$registration_form_action_value = $prepared['registration_form_action_value'];
+		$registration_info      = $prepared['registration_info'];
+		$show_post_registration = $prepared['show_post_registration'];
+		$post_registration_title = $prepared['post_registration_title'];
+		$post_registration_messages = $prepared['post_registration_messages'];
+		$player_points          = $prepared['player_points'];
+		$show_continue_game_2   = $prepared['show_continue_game_2'];
+		$continue_game_2_url    = $prepared['continue_game_2_url'];
+		$continue_game_2_label  = $prepared['continue_game_2_label'];
+		$game_2_unavailable     = $prepared['game_2_unavailable'];
 
 		?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -226,7 +235,10 @@ final class GameRenderer {
 
 		$is_preview  = ! empty( $view['is_preview'] );
 		$playable    = ! $is_preview && ! empty( $view['playable'] );
-		$game_locked = $playable && ! empty( $view['game_locked'] );
+		$game_locked = $playable && (
+			! empty( $view['game_locked'] )
+			|| ! empty( $view['show_post_registration'] )
+		);
 		$show_idk    = $playable && ! $game_locked && $show_comparison && ! empty( $view['show_idk'] );
 
 		$correct_label = '';
@@ -260,7 +272,7 @@ final class GameRenderer {
 			|| in_array( $completion_result, array( 'correct', 'idk' ), true )
 		);
 
-		$show_registration = $show_completion && ! empty( $view['show_registration'] );
+		$show_registration = $show_completion && ! empty( $view['show_registration'] ) && empty( $view['show_post_registration'] );
 		$registration_prompt = isset( $view['registration_prompt'] )
 			? sanitize_text_field( (string) $view['registration_prompt'] )
 			: '';
@@ -289,6 +301,44 @@ final class GameRenderer {
 			'email'      => isset( $raw_values['email'] ) ? sanitize_text_field( (string) $raw_values['email'] ) : '',
 			'username'   => isset( $raw_values['username'] ) ? sanitize_text_field( (string) $raw_values['username'] ) : '',
 		);
+
+		$registration_info = isset( $view['registration_info'] )
+			? sanitize_text_field( (string) $view['registration_info'] )
+			: '';
+
+		$show_post_registration = $playable && $game_locked && ! empty( $view['show_post_registration'] );
+		$post_registration_title = isset( $view['post_registration_title'] )
+			? sanitize_text_field( (string) $view['post_registration_title'] )
+			: '';
+
+		$post_registration_messages = array();
+
+		if ( isset( $view['post_registration_messages'] ) && is_array( $view['post_registration_messages'] ) ) {
+			foreach ( $view['post_registration_messages'] as $message ) {
+				if ( is_string( $message ) && '' !== $message ) {
+					$post_registration_messages[] = sanitize_text_field( $message );
+				}
+			}
+		}
+
+		$player_points = null;
+
+		if ( $show_post_registration && isset( $view['player_points'] ) && is_numeric( $view['player_points'] ) ) {
+			$player_points = max( 0, min( 4, absint( $view['player_points'] ) ) );
+		}
+
+		$show_continue_game_2 = $show_post_registration && ! empty( $view['show_continue_game_2'] );
+		$continue_game_2_url  = isset( $view['continue_game_2_url'] ) ? esc_url_raw( (string) $view['continue_game_2_url'] ) : '';
+		$continue_game_2_label = isset( $view['continue_game_2_label'] )
+			? sanitize_text_field( (string) $view['continue_game_2_label'] )
+			: '';
+		$game_2_unavailable = isset( $view['game_2_unavailable'] )
+			? sanitize_text_field( (string) $view['game_2_unavailable'] )
+			: '';
+
+		if ( $show_continue_game_2 && '' === $continue_game_2_url ) {
+			$show_continue_game_2 = false;
+		}
 
 		return array(
 			'game_number'                     => $game_number,
@@ -320,6 +370,15 @@ final class GameRenderer {
 			'registration_success_message'    => $registration_success_message,
 			'registration_errors'             => $registration_errors,
 			'registration_values'             => $registration_values,
+			'registration_info'               => $registration_info,
+			'show_post_registration'          => $show_post_registration,
+			'post_registration_title'         => $post_registration_title,
+			'post_registration_messages'      => $post_registration_messages,
+			'player_points'                   => $player_points,
+			'show_continue_game_2'            => $show_continue_game_2,
+			'continue_game_2_url'             => $continue_game_2_url,
+			'continue_game_2_label'           => $continue_game_2_label,
+			'game_2_unavailable'              => $game_2_unavailable,
 			'registration_nonce_action'       => isset( $view['registration_nonce_action'] ) ? sanitize_text_field( (string) $view['registration_nonce_action'] ) : '',
 			'registration_nonce_field'        => isset( $view['registration_nonce_field'] ) ? sanitize_key( (string) $view['registration_nonce_field'] ) : 'lk_register_nonce',
 			'registration_form_action_value'  => isset( $view['registration_form_action_value'] ) ? sanitize_key( (string) $view['registration_form_action_value'] ) : RegistrationGateway::FORM_ACTION,

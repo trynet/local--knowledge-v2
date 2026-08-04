@@ -122,11 +122,13 @@ final class GameState {
 	 */
 	public function initial_state( int $game_id ): array {
 		return array(
-			'game_id'      => absint( $game_id ),
-			'mode'         => self::MODE_PUBLIC,
-			'current_view' => self::VIEW_MIN,
-			'ended'        => false,
-			'result_type'  => '',
+			'game_id'         => absint( $game_id ),
+			'mode'            => self::MODE_PUBLIC,
+			'current_view'    => self::VIEW_MIN,
+			'ended'           => false,
+			'result_type'     => '',
+			'claimed'         => false,
+			'claimed_user_id' => 0,
 		);
 	}
 
@@ -208,13 +210,55 @@ final class GameState {
 			$result = '';
 		}
 
+		$claimed         = $ended && ! empty( $state['claimed'] );
+		$claimed_user_id = $claimed && isset( $state['claimed_user_id'] )
+			? absint( $state['claimed_user_id'] )
+			: 0;
+
+		if ( ! $claimed ) {
+			$claimed_user_id = 0;
+		}
+
 		return array(
-			'game_id'      => $game_id,
-			'mode'         => self::MODE_PUBLIC,
-			'current_view' => $view,
-			'ended'        => $ended,
-			'result_type'  => $ended ? $result : '',
+			'game_id'         => $game_id,
+			'mode'            => self::MODE_PUBLIC,
+			'current_view'    => $view,
+			'ended'           => $ended,
+			'result_type'     => $ended ? $result : '',
+			'claimed'         => $claimed,
+			'claimed_user_id' => $claimed_user_id,
 		);
+	}
+
+	/**
+	 * Mark a completed guest attempt as claimed by a WordPress user.
+	 *
+	 * @param int $game_id Game post ID.
+	 * @param int $user_id Claiming user ID.
+	 */
+	public function mark_claimed( int $game_id, int $user_id ): void {
+		if ( $game_id < 1 || $user_id < 1 ) {
+			return;
+		}
+
+		$state = $this->get_public_state( $game_id );
+
+		if ( empty( $state['ended'] ) ) {
+			return;
+		}
+
+		$state['claimed']         = true;
+		$state['claimed_user_id'] = $user_id;
+		$this->save_public_state( $state );
+	}
+
+	/**
+	 * Whether this guest attempt has already been transferred to a user.
+	 *
+	 * @param array<string, mixed> $state Public state.
+	 */
+	public function is_claimed( array $state ): bool {
+		return ! empty( $state['claimed'] ) && absint( $state['claimed_user_id'] ?? 0 ) > 0;
 	}
 
 	/**
