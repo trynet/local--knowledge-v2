@@ -20,6 +20,7 @@ defined( 'ABSPATH' ) || exit;
  * Validates registration, creates the player account, and transfers Game 1 results.
  *
  * Eligibility and scoring come only from authoritative GameState / permanent results.
+ * Successful registration never auto-logs the player in.
  */
 final class RegistrationGateway {
 
@@ -71,16 +72,16 @@ final class RegistrationGateway {
 	}
 
 	/**
-	 * Wire hooks (processing runs from GameRoute).
+	 * Wire hooks (processing runs from GameRoute / Shortcodes).
 	 */
 	public function register(): void {
-		// Intentionally empty: GameRoute invokes this class while rendering.
+		// Intentionally empty: PublicGameScreen invokes this class while rendering.
 	}
 
 	/**
 	 * If this is a registration POST, validate and create the account.
 	 *
-	 * Validation failures render in-place. Successful creation redirects after login.
+	 * Validation failures and success both render in-place (no auto-login / redirect).
 	 *
 	 * @param int $game_id     Published Game post ID.
 	 * @param int $game_number Game Number from the route.
@@ -99,21 +100,10 @@ final class RegistrationGateway {
 		}
 
 		$this->request_result = $this->evaluate_registration( $game_id, $game_number );
-
-		if ( ! empty( $this->request_result['should_redirect'] )
-			&& ! empty( $this->request_result['redirect_url'] )
-		) {
-			$url = (string) $this->request_result['redirect_url'];
-
-			if ( wp_validate_redirect( $url, false ) ) {
-				wp_safe_redirect( $url, 303 );
-				exit;
-			}
-		}
 	}
 
 	/**
-	 * Build registration / completion / post-registration extras.
+	 * Build registration / completion extras.
 	 *
 	 * @param int                  $game_id     Game post ID.
 	 * @param int                  $game_number Game Number.
@@ -124,7 +114,7 @@ final class RegistrationGateway {
 		$logged_in = is_user_logged_in();
 		$user_id   = $logged_in ? get_current_user_id() : 0;
 
-		// Logged-in player with a permanent Game 1 result: show score + Game 2.
+		// Logged-in player with a permanent Game 1 result: do not show score here.
 		if ( $user_id > 0 && 1 === absint( $game_number ) ) {
 			$permanent = $this->results->get_result( $user_id, 1 );
 
@@ -133,10 +123,9 @@ final class RegistrationGateway {
 			}
 
 			if ( null !== $permanent && (int) $permanent['game_id'] === $game_id ) {
-				return $this->post_registration_extras( $game_id, $permanent, $this->accounts->consume_flash( $user_id ) );
+				return $this->logged_in_completed_game1_extras( $game_id, $permanent );
 			}
 
-			// Logged in without a Game 1 result: never show guest registration.
 			$ended  = ! empty( $state['ended'] );
 			$result = isset( $state['result_type'] ) ? sanitize_key( (string) $state['result_type'] ) : '';
 			$locked = $ended && in_array( $result, array( 'correct', 'idk' ), true );
@@ -160,6 +149,16 @@ final class RegistrationGateway {
 
 		if ( ! $locked ) {
 			return null !== $this->request_result ? $this->request_result : array();
+		}
+
+		// Successful registration on this request (guest remains logged out).
+		if ( null !== $this->request_result && ! empty( $this->request_result['show_registration_thanks'] ) ) {
+			$extras = $this->default_extras( $game_id );
+			$extras = array_merge( $extras, $this->request_result );
+			$extras['show_completion']   = true;
+			$extras['completion_result'] = $result;
+			$extras['show_registration'] = false;
+			return $extras;
 		}
 
 		// Claimed guest attempt without matching logged-in session.
@@ -188,7 +187,7 @@ final class RegistrationGateway {
 			$eligible = ! empty( $extras['show_registration'] );
 			$extras   = array_merge( $extras, $this->request_result );
 
-			if ( $eligible && empty( $extras['show_post_registration'] ) ) {
+			if ( $eligible && empty( $extras['show_registration_thanks'] ) ) {
 				$extras['show_registration'] = true;
 			}
 		}
@@ -319,11 +318,11 @@ final class RegistrationGateway {
 			: '';
 		$user         = sanitize_user( $raw_username, true );
 
-		$values['first_name']           = $first;
-		$values['last_name']            = $last;
-		$values['email']                = sanitize_text_field( $email_raw );
-		$values['username']             = sanitize_text_field( $raw_username );
-		$out['registration_values']     = $values;
+		$values['first_name']       = $first;
+		$values['last_name']        = $last;
+		$values['email']            = sanitize_text_field( $email_raw );
+		$values['username']         = sanitize_text_field( $raw_username );
+		$out['registration_values'] = $values;
 
 		$errors = array();
 
@@ -374,8 +373,7 @@ final class RegistrationGateway {
 			return $out;
 		}
 
-		$user_id    = (int) $created['user_id'];
-		$email_sent = ! empty( $created['email_sent'] );
+		$user_id = (int) $created['user_id'];
 
 		$save = $this->results->save_result(
 			$user_id,
@@ -390,64 +388,24 @@ final class RegistrationGateway {
 			)
 		);
 
+		// Claim regardless so a refresh cannot create a second user for this attempt.
+		$this->state_store->mark_claimed( $game_id, $user_id );
+
 		if ( is_wp_error( $save ) ) {
-			// Account exists; claim the attempt so a refresh cannot create a second user.
-			$this->state_store->mark_claimed( $game_id, $user_id );
-			$this->accounts->set_flash(
-				$user_id,
-				array(
-					'account_created' => true,
-					'email_sent'      => $email_sent,
-					'login_ok'        => false,
-					'result_ok'       => false,
-				)
-			);
-
-			$login_ok = $this->accounts->login_user( $user_id );
-
 			$out['registration_errors'][] = $save->get_error_message();
 			$out['registration_errors'][] = __(
 				'Your account was created, but your Game 1 result could not be saved. Please contact support if this continues.',
 				'local-knowledge'
 			);
 			$out['show_registration'] = false;
-
-			if ( $login_ok ) {
-				$out['should_redirect'] = true;
-				$out['redirect_url']    = GameRoute::get_public_url( 1 );
-			}
-
 			return $out;
 		}
 
-		$this->state_store->mark_claimed( $game_id, $user_id );
-
-		$login_ok = $this->accounts->login_user( $user_id );
-
-		$this->accounts->set_flash(
-			$user_id,
-			array(
-				'account_created' => true,
-				'email_sent'      => $email_sent,
-				'login_ok'        => $login_ok,
-				'result_ok'       => true,
-			)
-		);
-
-		if ( $login_ok ) {
-			$out['should_redirect']      = true;
-			$out['redirect_url']         = GameRoute::get_public_url( 1 );
-			$out['registration_success'] = true;
-			$out['show_registration']    = false;
-			return $out;
-		}
-
-		// Account + result saved; login failed.
-		$out['show_registration'] = false;
-		$out['registration_info'] = __(
-			'Your account and Game 1 result were saved, but automatic sign-in failed. Please use the link in your email or log in to continue.',
-			'local-knowledge'
-		);
+		// Success: remain logged out; show only the email instruction.
+		$out['show_registration']         = false;
+		$out['show_registration_thanks']  = true;
+		$out['registration_success']      = false;
+		$out['registration_errors']       = array();
 
 		return $out;
 	}
@@ -503,17 +461,16 @@ final class RegistrationGateway {
 	}
 
 	/**
-	 * View extras for a logged-in player with a permanent Game 1 result.
+	 * Locked Game 1 view for a logged-in player who already has a permanent result.
+	 * Score / Continue live on the Play page ([lk_current_game]), not here.
 	 *
 	 * @param int                  $game_id   Game post ID.
 	 * @param array<string, mixed> $permanent Permanent result row.
-	 * @param array<string, bool>  $flash     Consumed flash flags.
 	 * @return array<string, mixed>
 	 */
-	private function post_registration_extras( int $game_id, array $permanent, array $flash ): array {
+	private function logged_in_completed_game1_extras( int $game_id, array $permanent ): array {
 		$extras = $this->default_extras( $game_id );
 
-		$points      = isset( $permanent['points'] ) ? absint( $permanent['points'] ) : 0;
 		$result_type = isset( $permanent['result_type'] ) ? sanitize_key( (string) $permanent['result_type'] ) : '';
 		$view        = isset( $permanent['completed_view'] ) ? absint( $permanent['completed_view'] ) : 1;
 
@@ -527,115 +484,19 @@ final class RegistrationGateway {
 		$extras['correct_location_label'] = $label;
 		$extras['current_view']           = $view;
 		$extras['show_registration']      = false;
-		$extras['show_post_registration'] = true;
-		$extras['player_points']          = $points;
 		$extras['show_comparison']        = GameState::VIEW_COMPARISON === $view;
 		$extras['show_large_image']       = GameState::VIEW_COMPARISON !== $view;
 		$extras['show_idk']               = false;
+		$extras['registration_info']      = __(
+			'Game 1 is already complete for your account. Open the Play page to continue.',
+			'local-knowledge'
+		);
 
 		if ( GameState::VIEW_COMPARISON === $view ) {
 			$extras['comparison_images'] = $display->get_comparison_images( $game_id );
 		}
 
-		$account_created = ! empty( $flash['account_created'] );
-		$email_sent      = ! empty( $flash['email_sent'] );
-		$login_ok        = ! isset( $flash['login_ok'] ) || ! empty( $flash['login_ok'] );
-		$result_ok       = ! isset( $flash['result_ok'] ) || ! empty( $flash['result_ok'] );
-
-		$extras['post_registration_title'] = $account_created
-			? __( 'Account created', 'local-knowledge' )
-			: __( 'Game 1 complete', 'local-knowledge' );
-
-		$messages = array();
-
-		if ( $account_created ) {
-			$messages[] = __( 'Account created successfully.', 'local-knowledge' );
-		}
-
-		if ( $result_ok ) {
-			$messages[] = sprintf(
-				/* translators: %d: points earned */
-				__( 'You earned %d points in Game 1.', 'local-knowledge' ),
-				$points
-			);
-			$messages[] = __( 'Game 1 is complete.', 'local-knowledge' );
-		} else {
-			$messages[] = __( 'Your Game 1 result could not be confirmed. Please contact support if your score does not appear.', 'local-knowledge' );
-		}
-
-		if ( $account_created && $email_sent ) {
-			$messages[] = __( 'Check your email for a secure link to create your password.', 'local-knowledge' );
-		} elseif ( $account_created && ! $email_sent ) {
-			$messages[] = __(
-				'Your account was created, but the password setup email may not have been sent. You may need to request a password reset later.',
-				'local-knowledge'
-			);
-		} elseif ( ! $account_created ) {
-			$messages[] = __( 'Check your email for a secure link to create your password if you have not set one yet.', 'local-knowledge' );
-		}
-
-		if ( $account_created && ! $login_ok ) {
-			$messages[] = __(
-				'Automatic sign-in did not complete. Please use your email link or log in to continue.',
-				'local-knowledge'
-			);
-		}
-
-		$extras['post_registration_messages'] = $messages;
-
-		$game2_id  = $this->find_published_game_id( 2 );
-		$game2_url = null !== $game2_id ? GameRoute::get_public_url( 2 ) : '';
-
-		if ( '' !== $game2_url && $result_ok ) {
-			$extras['show_continue_game_2'] = true;
-			$extras['continue_game_2_url']  = $game2_url;
-			$extras['continue_game_2_label'] = __( 'Continue to Game 2', 'local-knowledge' );
-		} else {
-			$extras['show_continue_game_2'] = false;
-			$extras['game_2_unavailable']   = __(
-				'Game 2 is not available yet. Please check back later.',
-				'local-knowledge'
-			);
-		}
-
 		return $extras;
-	}
-
-	/**
-	 * Locate a published Game by Game Number.
-	 *
-	 * @param int $game_number Game Number.
-	 */
-	private function find_published_game_id( int $game_number ): ?int {
-		if ( $game_number < 1 ) {
-			return null;
-		}
-
-		$query = new \WP_Query(
-			array(
-				'post_type'              => GamePostType::POST_TYPE,
-				'post_status'            => 'publish',
-				'posts_per_page'         => 1,
-				'fields'                 => 'ids',
-				'no_found_rows'          => true,
-				'update_post_meta_cache' => false,
-				'update_post_term_cache' => false,
-				'meta_query'             => array(
-					array(
-						'key'     => GameDisplayData::META_KEYS['game_number'],
-						'value'   => $game_number,
-						'compare' => '=',
-						'type'    => 'NUMERIC',
-					),
-				),
-			)
-		);
-
-		if ( ! $query->have_posts() ) {
-			return null;
-		}
-
-		return (int) $query->posts[0];
 	}
 
 	/**
@@ -660,14 +521,7 @@ final class RegistrationGateway {
 				'username'   => '',
 			),
 			'registration_info'              => '',
-			'show_post_registration'         => false,
-			'post_registration_title'        => '',
-			'post_registration_messages'     => array(),
-			'player_points'                  => null,
-			'show_continue_game_2'           => false,
-			'continue_game_2_url'            => '',
-			'continue_game_2_label'          => '',
-			'game_2_unavailable'             => '',
+			'show_registration_thanks'       => false,
 			'registration_nonce_action'      => $this->nonce_action( $game_id ),
 			'registration_nonce_field'       => 'lk_register_nonce',
 			'registration_form_action_value' => self::FORM_ACTION,

@@ -108,14 +108,77 @@ final class PlayerResultRepository {
 	 * @param int $user_id User ID.
 	 * @return array<string, array<string, mixed>>
 	 */
-	private function get_all_results( int $user_id ): array {
+	public function get_all_results( int $user_id ): array {
+		if ( $user_id < 1 ) {
+			return array();
+		}
+
 		$raw = get_user_meta( $user_id, self::META_KEY, true );
 
 		if ( ! is_array( $raw ) ) {
 			return array();
 		}
 
-		return $raw;
+		$out = array();
+
+		foreach ( $raw as $key => $row ) {
+			if ( ! is_array( $row ) ) {
+				continue;
+			}
+
+			$normalized = $this->normalize_result( $row );
+
+			if ( null === $normalized ) {
+				continue;
+			}
+
+			$out[ (string) $normalized['game_number'] ] = $normalized;
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Sorted list of completed Game Numbers.
+	 *
+	 * @param int $user_id User ID.
+	 * @return list<int>
+	 */
+	public function get_completed_game_numbers( int $user_id ): array {
+		$numbers = array();
+
+		foreach ( $this->get_all_results( $user_id ) as $row ) {
+			$numbers[] = absint( $row['game_number'] );
+		}
+
+		$numbers = array_values( array_unique( $numbers ) );
+		sort( $numbers, SORT_NUMERIC );
+
+		return $numbers;
+	}
+
+	/**
+	 * Sum of points across all permanent results.
+	 *
+	 * @param int $user_id User ID.
+	 */
+	public function get_total_points( int $user_id ): int {
+		$total = 0;
+
+		foreach ( $this->get_all_results( $user_id ) as $row ) {
+			$total += absint( $row['points'] );
+		}
+
+		return $total;
+	}
+
+	/**
+	 * Count of completed Games.
+	 *
+	 * @param int $user_id User ID.
+	 */
+	public function count_completed( int $user_id ): int {
+		return count( $this->get_completed_game_numbers( $user_id ) );
 	}
 
 	/**

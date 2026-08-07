@@ -377,8 +377,43 @@
 	border-radius: 3px;
 }
 
-.lk-game__post-registration,
-.lk-game__registration-info {
+.lk-game__registration-thanks,
+.lk-game__registration-info,
+.lk-game__handoff {
+	margin: 0 0 1.25rem;
+	padding: 1rem;
+	border: 1px solid #c3c4c7;
+	background: #f6f7f7;
+	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
+}
+
+.lk-game__registration-thanks-title,
+.lk-game__handoff-title {
+	margin: 0 0 0.75rem;
+	font-size: 1.25rem;
+	line-height: 1.25;
+}
+
+.lk-game__registration-thanks p,
+.lk-game__registration-info p,
+.lk-game__handoff p {
+	margin: 0 0 0.65rem;
+	font-size: 1rem;
+	line-height: 1.45;
+}
+
+.lk-game__registration-thanks p:last-child,
+.lk-game__registration-info p:last-child,
+.lk-game__handoff p:last-child {
+	margin-bottom: 0;
+}
+
+.lk-game__handoff-current {
+	font-weight: 600;
+}
+
+.lk-game-message,
+.lk-dashboard {
 	margin: 0 0 1rem;
 	padding: 1rem;
 	border: 1px solid #c3c4c7;
@@ -386,42 +421,14 @@
 	font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen-Sans, Ubuntu, Cantarell, "Helvetica Neue", sans-serif;
 }
 
-.lk-game__post-registration-title {
-	margin: 0 0 0.75rem;
-	font-size: 1.25rem;
-	line-height: 1.25;
-}
-
-.lk-game__post-registration-body p,
-.lk-game__registration-info p {
-	margin: 0 0 0.65rem;
+.lk-dashboard p {
+	margin: 0 0 0.5rem;
 	font-size: 1rem;
 	line-height: 1.45;
 }
 
-.lk-game__post-registration-body p:last-child,
-.lk-game__registration-info p:last-child {
+.lk-dashboard p:last-child {
 	margin-bottom: 0;
-}
-
-.lk-game__player-points {
-	font-weight: 600;
-}
-
-.lk-game__continue {
-	margin: 1rem 0 0;
-}
-
-a.lk-game__submit--continue {
-	display: inline-block;
-	text-decoration: none;
-	color: #fff;
-}
-
-.lk-game__game2-unavailable {
-	margin: 1rem 0 0;
-	font-size: 0.95rem;
-	line-height: 1.45;
 }
 
 .lk-game-screen--preview .lk-game__submit {

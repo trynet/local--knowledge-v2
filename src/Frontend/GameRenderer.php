@@ -36,47 +36,7 @@ final class GameRenderer {
 
 		$this->enqueue_assets( ! empty( $prepared['show_comparison'] ) );
 
-		$game_number            = $prepared['game_number'];
-		$image_url              = $prepared['image_url'];
-		$image_alt              = $prepared['image_alt'];
-		$locations              = $prepared['locations'];
-		$is_preview             = $prepared['is_preview'];
-		$playable               = $prepared['playable'];
-		$game_id                = $prepared['game_id'];
-		$nonce_action           = $prepared['nonce_action'];
-		$nonce_field            = $prepared['nonce_field'];
-		$form_action_value      = $prepared['form_action_value'];
-		$feedback               = $prepared['feedback'];
-		$selected_choice        = $prepared['selected_choice'];
-		$game_locked            = $prepared['game_locked'];
-		$correct_location_label = $prepared['correct_location_label'];
-		$clean_game_url         = $prepared['clean_game_url'];
-		$strip_flash_from_url   = $prepared['strip_flash_from_url'];
-		$current_view           = $prepared['current_view'];
-		$show_large_image       = $prepared['show_large_image'];
-		$show_comparison        = $prepared['show_comparison'];
-		$show_idk               = $prepared['show_idk'];
-		$comparison_images      = $prepared['comparison_images'];
-		$show_completion        = $prepared['show_completion'];
-		$completion_result      = $prepared['completion_result'];
-		$show_registration      = $prepared['show_registration'];
-		$registration_prompt    = $prepared['registration_prompt'];
-		$registration_success   = $prepared['registration_success'];
-		$registration_success_message = $prepared['registration_success_message'];
-		$registration_errors    = $prepared['registration_errors'];
-		$registration_values    = $prepared['registration_values'];
-		$registration_nonce_action = $prepared['registration_nonce_action'];
-		$registration_nonce_field  = $prepared['registration_nonce_field'];
-		$registration_form_action_value = $prepared['registration_form_action_value'];
-		$registration_info      = $prepared['registration_info'];
-		$show_post_registration = $prepared['show_post_registration'];
-		$post_registration_title = $prepared['post_registration_title'];
-		$post_registration_messages = $prepared['post_registration_messages'];
-		$player_points          = $prepared['player_points'];
-		$show_continue_game_2   = $prepared['show_continue_game_2'];
-		$continue_game_2_url    = $prepared['continue_game_2_url'];
-		$continue_game_2_label  = $prepared['continue_game_2_label'];
-		$game_2_unavailable     = $prepared['game_2_unavailable'];
+		extract( $this->template_vars( $prepared ), EXTR_SKIP ); // phpcs:ignore WordPress.PHP.DontExtract.extract_extract -- scoped template locals.
 
 		?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
@@ -104,22 +64,68 @@ final class GameRenderer {
 			wp_print_scripts( self::SCRIPT_HANDLE );
 		}
 
-		if ( $strip_flash_from_url && '' !== $clean_game_url ) :
-			?>
-<script>
-(function () {
-	if (!window.history || typeof window.history.replaceState !== 'function') {
-		return;
-	}
-	window.history.replaceState(null, document.title, <?php echo wp_json_encode( $clean_game_url ); ?>);
-})();
-</script>
-			<?php
-		endif;
+		echo $this->flash_strip_script( $prepared ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- script builder escapes JSON.
 ?>
 </body>
 </html>
 		<?php
+	}
+
+	/**
+	 * Render Game markup as an HTML fragment for shortcodes / theme content.
+	 *
+	 * @param array<string, mixed> $view Prepared view data.
+	 */
+	public function render_embedded( array $view ): string {
+		$prepared = $this->prepare_view( $view );
+
+		$this->enqueue_assets( ! empty( $prepared['show_comparison'] ) );
+
+		// Shortcodes often render after wp_head; print assets with the fragment.
+		ob_start();
+		wp_print_styles( self::STYLE_HANDLE );
+		if ( ! empty( $prepared['show_comparison'] ) ) {
+			wp_print_scripts( self::SCRIPT_HANDLE );
+		}
+		$assets = ob_get_clean();
+
+		extract( $this->template_vars( $prepared ), EXTR_SKIP ); // phpcs:ignore WordPress.PHP.DontExtract.extract_extract -- scoped template locals.
+
+		ob_start();
+		echo is_string( $assets ) ? $assets : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- core asset tags.
+		include LK_PLUGIN_DIR . 'templates/game.php';
+		echo $this->flash_strip_script( $prepared ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- script builder escapes JSON.
+		$html = ob_get_clean();
+
+		return is_string( $html ) ? $html : '';
+	}
+
+	/**
+	 * Flatten prepared view for the shared template.
+	 *
+	 * @param array<string, mixed> $prepared Prepared view.
+	 * @return array<string, mixed>
+	 */
+	private function template_vars( array $prepared ): array {
+		return $prepared;
+	}
+
+	/**
+	 * Optional history.replaceState script for flash query cleanup.
+	 *
+	 * @param array<string, mixed> $prepared Prepared view.
+	 */
+	private function flash_strip_script( array $prepared ): string {
+		if ( empty( $prepared['strip_flash_from_url'] ) || empty( $prepared['clean_game_url'] ) ) {
+			return '';
+		}
+
+		$url = (string) $prepared['clean_game_url'];
+
+		return '<script>(function () {'
+			. 'if (!window.history || typeof window.history.replaceState !== "function") { return; }'
+			. 'window.history.replaceState(null, document.title, ' . wp_json_encode( $url ) . ');'
+			. '})();</script>';
 	}
 
 	/**
@@ -237,7 +243,7 @@ final class GameRenderer {
 		$playable    = ! $is_preview && ! empty( $view['playable'] );
 		$game_locked = $playable && (
 			! empty( $view['game_locked'] )
-			|| ! empty( $view['show_post_registration'] )
+			|| ! empty( $view['show_registration_thanks'] )
 		);
 		$show_idk    = $playable && ! $game_locked && $show_comparison && ! empty( $view['show_idk'] );
 
@@ -272,8 +278,9 @@ final class GameRenderer {
 			|| in_array( $completion_result, array( 'correct', 'idk' ), true )
 		);
 
-		$show_registration = $show_completion && ! empty( $view['show_registration'] ) && empty( $view['show_post_registration'] );
-		$registration_prompt = isset( $view['registration_prompt'] )
+		$show_registration_thanks = $playable && ! empty( $view['show_registration_thanks'] );
+		$show_registration        = $show_completion && ! empty( $view['show_registration'] ) && ! $show_registration_thanks;
+		$registration_prompt      = isset( $view['registration_prompt'] )
 			? sanitize_text_field( (string) $view['registration_prompt'] )
 			: '';
 		$registration_success = $show_registration && ! empty( $view['registration_success'] );
@@ -306,38 +313,19 @@ final class GameRenderer {
 			? sanitize_text_field( (string) $view['registration_info'] )
 			: '';
 
-		$show_post_registration = $playable && $game_locked && ! empty( $view['show_post_registration'] );
-		$post_registration_title = isset( $view['post_registration_title'] )
-			? sanitize_text_field( (string) $view['post_registration_title'] )
-			: '';
+		$show_game1_handoff = ! empty( $view['show_game1_handoff'] );
+		$game1_handoff_points = null;
+		$current_total_points = null;
+		$handoff_game_number  = isset( $view['handoff_game_number'] ) ? absint( $view['handoff_game_number'] ) : 1;
 
-		$post_registration_messages = array();
-
-		if ( isset( $view['post_registration_messages'] ) && is_array( $view['post_registration_messages'] ) ) {
-			foreach ( $view['post_registration_messages'] as $message ) {
-				if ( is_string( $message ) && '' !== $message ) {
-					$post_registration_messages[] = sanitize_text_field( $message );
-				}
-			}
+		if ( $show_game1_handoff && isset( $view['game1_handoff_points'] ) && is_numeric( $view['game1_handoff_points'] ) ) {
+			$game1_handoff_points = max( 0, absint( $view['game1_handoff_points'] ) );
 		}
 
-		$player_points = null;
-
-		if ( $show_post_registration && isset( $view['player_points'] ) && is_numeric( $view['player_points'] ) ) {
-			$player_points = max( 0, min( 4, absint( $view['player_points'] ) ) );
-		}
-
-		$show_continue_game_2 = $show_post_registration && ! empty( $view['show_continue_game_2'] );
-		$continue_game_2_url  = isset( $view['continue_game_2_url'] ) ? esc_url_raw( (string) $view['continue_game_2_url'] ) : '';
-		$continue_game_2_label = isset( $view['continue_game_2_label'] )
-			? sanitize_text_field( (string) $view['continue_game_2_label'] )
-			: '';
-		$game_2_unavailable = isset( $view['game_2_unavailable'] )
-			? sanitize_text_field( (string) $view['game_2_unavailable'] )
-			: '';
-
-		if ( $show_continue_game_2 && '' === $continue_game_2_url ) {
-			$show_continue_game_2 = false;
+		if ( $show_game1_handoff && isset( $view['current_total_points'] ) && is_numeric( $view['current_total_points'] ) ) {
+			$current_total_points = max( 0, absint( $view['current_total_points'] ) );
+		} elseif ( null !== $game1_handoff_points ) {
+			$current_total_points = $game1_handoff_points;
 		}
 
 		return array(
@@ -371,14 +359,11 @@ final class GameRenderer {
 			'registration_errors'             => $registration_errors,
 			'registration_values'             => $registration_values,
 			'registration_info'               => $registration_info,
-			'show_post_registration'          => $show_post_registration,
-			'post_registration_title'         => $post_registration_title,
-			'post_registration_messages'      => $post_registration_messages,
-			'player_points'                   => $player_points,
-			'show_continue_game_2'            => $show_continue_game_2,
-			'continue_game_2_url'             => $continue_game_2_url,
-			'continue_game_2_label'           => $continue_game_2_label,
-			'game_2_unavailable'              => $game_2_unavailable,
+			'show_registration_thanks'        => $show_registration_thanks,
+			'show_game1_handoff'              => $show_game1_handoff && null !== $game1_handoff_points,
+			'game1_handoff_points'            => $game1_handoff_points,
+			'current_total_points'            => $current_total_points,
+			'handoff_game_number'             => max( 1, $handoff_game_number ),
 			'registration_nonce_action'       => isset( $view['registration_nonce_action'] ) ? sanitize_text_field( (string) $view['registration_nonce_action'] ) : '',
 			'registration_nonce_field'        => isset( $view['registration_nonce_field'] ) ? sanitize_key( (string) $view['registration_nonce_field'] ) : 'lk_register_nonce',
 			'registration_form_action_value'  => isset( $view['registration_form_action_value'] ) ? sanitize_key( (string) $view['registration_form_action_value'] ) : RegistrationGateway::FORM_ACTION,

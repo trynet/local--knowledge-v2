@@ -75,24 +75,61 @@ $registration_nonce_field  = isset( $registration_nonce_field ) ? (string) $regi
 $registration_form_action_value = isset( $registration_form_action_value ) ? (string) $registration_form_action_value : '';
 $has_reg_errors         = array() !== $registration_errors;
 $registration_info      = isset( $registration_info ) ? (string) $registration_info : '';
-$show_post_registration = ! empty( $show_post_registration );
-$post_registration_title = isset( $post_registration_title ) ? (string) $post_registration_title : '';
-$post_registration_messages = isset( $post_registration_messages ) && is_array( $post_registration_messages ) ? $post_registration_messages : array();
-if ( ! isset( $player_points ) || null === $player_points ) {
-	$player_points = null;
+$show_registration_thanks = ! empty( $show_registration_thanks );
+$show_game1_handoff     = ! empty( $show_game1_handoff );
+if ( ! isset( $game1_handoff_points ) || null === $game1_handoff_points ) {
+	$game1_handoff_points = null;
 } else {
-	$player_points = (int) $player_points;
+	$game1_handoff_points = (int) $game1_handoff_points;
 }
-$show_continue_game_2   = ! empty( $show_continue_game_2 );
-$continue_game_2_url    = isset( $continue_game_2_url ) ? (string) $continue_game_2_url : '';
-$continue_game_2_label  = isset( $continue_game_2_label ) ? (string) $continue_game_2_label : '';
-$game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavailable : '';
+if ( ! isset( $current_total_points ) || null === $current_total_points ) {
+	$current_total_points = $game1_handoff_points;
+} else {
+	$current_total_points = (int) $current_total_points;
+}
+$handoff_game_number = isset( $handoff_game_number ) ? (int) $handoff_game_number : 1;
 ?>
 <main class="lk-game<?php echo $show_comparison ? ' lk-game--comparison' : ''; ?>">
+	<?php if ( ! $show_registration_thanks ) : ?>
 	<?php if ( $is_preview ) : ?>
 		<div class="lk-game__preview-notice" role="status">
 			<?php esc_html_e( 'Preview Mode — No player progress or scores will be recorded.', 'local-knowledge' ); ?>
 		</div>
+	<?php endif; ?>
+
+	<?php if ( $show_game1_handoff && null !== $game1_handoff_points ) : ?>
+		<section class="lk-game__handoff" aria-labelledby="lk-game-handoff-heading">
+			<h2 id="lk-game-handoff-heading" class="lk-game__handoff-title">
+				<?php
+				echo esc_html(
+					sprintf(
+						/* translators: %d: completed game number */
+						__( 'Game %d Complete', 'local-knowledge' ),
+						max( 1, $handoff_game_number )
+					)
+				);
+				?>
+			</h2>
+			<p>
+				<?php
+				printf(
+					/* translators: 1: game number, 2: points earned */
+					esc_html__( 'You earned %2$d points in Game %1$d.', 'local-knowledge' ),
+					max( 1, $handoff_game_number ),
+					$game1_handoff_points
+				);
+				?>
+			</p>
+			<p class="lk-game__handoff-current">
+				<?php
+				printf(
+					/* translators: %d: current total points */
+					esc_html__( 'Current Score: %d points', 'local-knowledge' ),
+					null !== $current_total_points ? $current_total_points : $game1_handoff_points
+				);
+				?>
+			</p>
+		</section>
 	<?php endif; ?>
 
 	<header class="lk-game__header">
@@ -177,13 +214,29 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 			</dialog>
 		</section>
 	<?php endif; ?>
+	<?php endif; // ! $show_registration_thanks ?>
 
 	<?php
 	// Locked correct/IDK completion — gate on game_locked, not an unrelated flag
 	// (e.g. show_comparison / show_idk) that is false after a View 1 correct answer.
 	$completion_type = '' !== $completion_result ? $completion_result : $feedback;
 	?>
-	<?php if ( $playable && $game_locked && in_array( $completion_type, array( 'correct', 'idk' ), true ) ) : ?>
+	<?php if ( $show_registration_thanks ) : ?>
+		<section class="lk-game__registration-thanks" aria-labelledby="lk-registration-thanks-heading" role="status">
+			<h2 id="lk-registration-thanks-heading" class="lk-game__registration-thanks-title">
+				<?php esc_html_e( 'Thank you for registering', 'local-knowledge' ); ?>
+			</h2>
+			<p>
+				<?php
+				esc_html_e(
+					'To see how many points you scored and continue playing, check your email to create your account password.',
+					'local-knowledge'
+				);
+				?>
+			</p>
+		</section>
+
+	<?php elseif ( $playable && $game_locked && in_array( $completion_type, array( 'correct', 'idk' ), true ) ) : ?>
 		<section class="lk-game__completion" aria-labelledby="lk-game-complete-heading">
 			<h2 id="lk-game-complete-heading" class="lk-game__completion-title">
 				<?php esc_html_e( 'Game Complete', 'local-knowledge' ); ?>
@@ -220,46 +273,7 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 			<?php endif; ?>
 		</section>
 
-		<?php if ( ! empty( $show_post_registration ) ) : ?>
-			<section class="lk-game__post-registration" aria-labelledby="lk-post-registration-heading">
-				<h2 id="lk-post-registration-heading" class="lk-game__post-registration-title">
-					<?php echo esc_html( '' !== $post_registration_title ? $post_registration_title : __( 'Account created', 'local-knowledge' ) ); ?>
-				</h2>
-
-				<div class="lk-game__post-registration-body" role="status">
-					<?php if ( isset( $post_registration_messages ) && is_array( $post_registration_messages ) ) : ?>
-						<?php foreach ( $post_registration_messages as $post_msg ) : ?>
-							<p><?php echo esc_html( (string) $post_msg ); ?></p>
-						<?php endforeach; ?>
-					<?php endif; ?>
-
-					<?php if ( null !== $player_points ) : ?>
-						<p class="lk-game__player-points">
-							<?php
-							printf(
-								/* translators: %d: points earned */
-								esc_html__( 'Game 1 score: %d points', 'local-knowledge' ),
-								(int) $player_points
-							);
-							?>
-						</p>
-					<?php endif; ?>
-				</div>
-
-				<?php if ( ! empty( $show_continue_game_2 ) && '' !== $continue_game_2_url ) : ?>
-					<p class="lk-game__continue">
-						<a class="lk-game__submit lk-game__submit--continue" href="<?php echo esc_url( $continue_game_2_url ); ?>">
-							<?php echo esc_html( '' !== $continue_game_2_label ? $continue_game_2_label : __( 'Continue to Game 2', 'local-knowledge' ) ); ?>
-						</a>
-					</p>
-				<?php elseif ( '' !== $game_2_unavailable ) : ?>
-					<p class="lk-game__game2-unavailable" role="status">
-						<?php echo esc_html( $game_2_unavailable ); ?>
-					</p>
-				<?php endif; ?>
-			</section>
-
-		<?php elseif ( '' !== $registration_info ) : ?>
+		<?php if ( '' !== $registration_info ) : ?>
 			<div class="lk-game__registration-info" role="status">
 				<p><?php echo esc_html( $registration_info ); ?></p>
 			</div>

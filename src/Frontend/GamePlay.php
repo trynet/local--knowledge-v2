@@ -102,7 +102,10 @@ final class GamePlay {
 		$locked      = $ended && in_array( $result, array( 'correct', 'idk' ), true );
 		$comparison  = GameState::VIEW_COMPARISON === $view;
 
-		$extras['clean_game_url']   = GameRoute::get_public_url( $game_number );
+		$extras['clean_game_url']   = PlayPage::get_url();
+		if ( '' === $extras['clean_game_url'] ) {
+			$extras['clean_game_url'] = GameRoute::get_public_url( $game_number );
+		}
 		$extras['current_view']     = $view;
 		$extras['image_stage']      = $comparison ? 0 : $view;
 		$extras['game_locked']      = $locked;
@@ -288,13 +291,17 @@ final class GamePlay {
 	}
 
 	/**
-	 * Redirect to the public Game URL with a feedback flash token.
+	 * Redirect to the Play page (preferred) or public Game URL with a feedback flash token.
 	 *
 	 * @param int    $game_number Game Number.
 	 * @param string $token       Signed flash token.
 	 */
 	private function redirect_with_flash( int $game_number, string $token ): void {
-		$url = GameRoute::get_public_url( $game_number );
+		$url = PlayPage::get_url();
+
+		if ( '' === $url ) {
+			$url = GameRoute::get_public_url( $game_number );
+		}
 
 		if ( '' === $url ) {
 			$url = home_url( '/' );

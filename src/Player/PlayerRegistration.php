@@ -1,6 +1,6 @@
 <?php
 /**
- * WordPress player account creation, notification, and login.
+ * WordPress player account creation and notification.
  *
  * @package JoyOfCode\LocalKnowledge
  */
@@ -13,13 +13,10 @@ defined( 'ABSPATH' ) || exit;
 
 /**
  * Creates subscriber accounts and triggers core password-setup email.
+ *
+ * Does not authenticate the new player.
  */
 final class PlayerRegistration {
-
-	/**
-	 * User meta: one-time post-registration notice flags (deleted after read).
-	 */
-	public const FLASH_META_KEY = '_lk_registration_flash';
 
 	/**
 	 * Create a player account. Does not log in or store Game results.
@@ -96,76 +93,6 @@ final class PlayerRegistration {
 		wp_new_user_notification( $user_id, null, 'user' );
 
 		return $this->mail_likely_succeeded( $before );
-	}
-
-	/**
-	 * Log the player in without requiring the generated password.
-	 *
-	 * @param int $user_id User ID.
-	 */
-	public function login_user( int $user_id ): bool {
-		if ( $user_id < 1 ) {
-			return false;
-		}
-
-		$user = get_user_by( 'id', $user_id );
-
-		if ( ! $user instanceof \WP_User ) {
-			return false;
-		}
-
-		wp_set_current_user( $user_id );
-		wp_set_auth_cookie( $user_id, true, is_ssl() );
-		do_action( 'wp_login', $user->user_login, $user );
-
-		return is_user_logged_in() && get_current_user_id() === $user_id;
-	}
-
-	/**
-	 * Store a one-time flash notice for the post-registration GET.
-	 *
-	 * @param int                  $user_id User ID.
-	 * @param array<string, mixed> $flash   Safe flags only (no secrets).
-	 */
-	public function set_flash( int $user_id, array $flash ): void {
-		if ( $user_id < 1 ) {
-			return;
-		}
-
-		$safe = array(
-			'account_created' => ! empty( $flash['account_created'] ),
-			'email_sent'      => ! empty( $flash['email_sent'] ),
-			'login_ok'        => ! empty( $flash['login_ok'] ),
-			'result_ok'       => ! empty( $flash['result_ok'] ),
-		);
-
-		update_user_meta( $user_id, self::FLASH_META_KEY, $safe );
-	}
-
-	/**
-	 * Read and clear the one-time flash notice.
-	 *
-	 * @param int $user_id User ID.
-	 * @return array<string, bool>
-	 */
-	public function consume_flash( int $user_id ): array {
-		if ( $user_id < 1 ) {
-			return array();
-		}
-
-		$raw = get_user_meta( $user_id, self::FLASH_META_KEY, true );
-		delete_user_meta( $user_id, self::FLASH_META_KEY );
-
-		if ( ! is_array( $raw ) ) {
-			return array();
-		}
-
-		return array(
-			'account_created' => ! empty( $raw['account_created'] ),
-			'email_sent'      => ! empty( $raw['email_sent'] ),
-			'login_ok'        => ! empty( $raw['login_ok'] ),
-			'result_ok'       => ! empty( $raw['result_ok'] ),
-		);
 	}
 
 	/**

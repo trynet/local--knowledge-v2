@@ -15,7 +15,9 @@ use JoyOfCode\LocalKnowledge\Admin\GamePreview;
 use JoyOfCode\LocalKnowledge\Admin\GameValidator;
 use JoyOfCode\LocalKnowledge\Frontend\GamePlay;
 use JoyOfCode\LocalKnowledge\Frontend\GameRoute;
+use JoyOfCode\LocalKnowledge\Frontend\LoginRedirect;
 use JoyOfCode\LocalKnowledge\Frontend\RegistrationGateway;
+use JoyOfCode\LocalKnowledge\Frontend\Shortcodes;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -48,5 +50,11 @@ final class Plugin {
 
 		$registration = new RegistrationGateway();
 		$registration->register();
+
+		$shortcodes = new Shortcodes();
+		$shortcodes->register();
+
+		$login_redirect = new LoginRedirect();
+		$login_redirect->register();
 	}
 }
