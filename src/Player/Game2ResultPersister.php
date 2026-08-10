@@ -1,6 +1,6 @@
 <?php
 /**
- * Permanently records Game 2 completion for logged-in players.
+ * Permanently records completion for logged-in Games 2–10.
  *
  * @package JoyOfCode\LocalKnowledge
  */
@@ -16,17 +16,22 @@ use JoyOfCode\LocalKnowledge\Frontend\GameState;
 defined( 'ABSPATH' ) || exit;
 
 /**
- * Appends one Game 2 result after GamePlay has already locked GameState.
+ * Appends one Game result after GamePlay has already locked GameState.
  *
  * Does not evaluate answers or mutate gameplay state.
- * Game 1 remains registration-only. Games 3–10 are out of scope.
+ * Game 1 remains registration-only.
  */
 final class Game2ResultPersister {
 
 	/**
-	 * Game Number handled by this persister.
+	 * Lowest Game Number handled by this persister.
 	 */
-	private const GAME_NUMBER = 2;
+	private const MIN_GAME_NUMBER = 2;
+
+	/**
+	 * Highest Game Number handled by this persister.
+	 */
+	private const MAX_GAME_NUMBER = 10;
 
 	/**
 	 * Permanent results store.
@@ -57,14 +62,17 @@ final class Game2ResultPersister {
 	}
 
 	/**
-	 * Persist Game 2 when eligibility and locked GameState are already satisfied.
+	 * Persist Games 2–10 when eligibility and locked GameState are already satisfied.
 	 *
 	 * @param int                  $game_id     Published Game post ID.
 	 * @param int                  $game_number Game Number from the play path.
 	 * @param array<string, mixed> $state       Authoritative GameState after lock + save.
 	 */
 	public function maybe_persist( int $game_id, int $game_number, array $state ): void {
-		if ( self::GAME_NUMBER !== $game_number || $game_id < 1 ) {
+		if ( $game_number < self::MIN_GAME_NUMBER
+			|| $game_number > self::MAX_GAME_NUMBER
+			|| $game_id < 1
+		) {
 			return;
 		}
 
@@ -74,11 +82,12 @@ final class Game2ResultPersister {
 			return;
 		}
 
-		if ( ! $this->results->has_result( $user_id, 1 ) ) {
+		// Sequential rule: Game N requires permanent Game N−1.
+		if ( ! $this->results->has_result( $user_id, $game_number - 1 ) ) {
 			return;
 		}
 
-		if ( $this->results->has_result( $user_id, self::GAME_NUMBER ) ) {
+		if ( $this->results->has_result( $user_id, $game_number ) ) {
 			return;
 		}
 
@@ -93,7 +102,7 @@ final class Game2ResultPersister {
 
 		$stored_number = absint( get_post_meta( $game_id, GameDisplayData::META_KEYS['game_number'], true ) );
 
-		if ( self::GAME_NUMBER !== $stored_number ) {
+		if ( $game_number !== $stored_number ) {
 			return;
 		}
 
@@ -120,7 +129,7 @@ final class Game2ResultPersister {
 			$user_id,
 			array(
 				'game_id'        => $game_id,
-				'game_number'    => self::GAME_NUMBER,
+				'game_number'    => $game_number,
 				'completed_view' => $view,
 				'result_type'    => $result,
 				'points'         => $points,
