@@ -81,19 +81,16 @@ final class GameRenderer {
 
 		$this->enqueue_assets( ! empty( $prepared['show_comparison'] ) );
 
-		// Shortcodes often render after wp_head; print assets with the fragment.
+		extract( $this->template_vars( $prepared ), EXTR_SKIP ); // phpcs:ignore WordPress.PHP.DontExtract.extract_extract -- scoped template locals.
+
+		// Shortcodes often render after wp_head; print styles/scripts with the fragment.
+		// Comparison JS must run after markup (same order as render()).
 		ob_start();
 		wp_print_styles( self::STYLE_HANDLE );
+		include LK_PLUGIN_DIR . 'templates/game.php';
 		if ( ! empty( $prepared['show_comparison'] ) ) {
 			wp_print_scripts( self::SCRIPT_HANDLE );
 		}
-		$assets = ob_get_clean();
-
-		extract( $this->template_vars( $prepared ), EXTR_SKIP ); // phpcs:ignore WordPress.PHP.DontExtract.extract_extract -- scoped template locals.
-
-		ob_start();
-		echo is_string( $assets ) ? $assets : ''; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- core asset tags.
-		include LK_PLUGIN_DIR . 'templates/game.php';
 		echo $this->flash_strip_script( $prepared ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- script builder escapes JSON.
 		$html = ob_get_clean();
 

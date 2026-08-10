@@ -375,7 +375,7 @@ $handoff_game_number = isset( $handoff_game_number ) ? (int) $handoff_game_numbe
 				</p>
 			<?php elseif ( 'missing' === $feedback ) : ?>
 				<p class="lk-game__feedback-message">
-					<?php esc_html_e( 'Please select a location before submitting.', 'local-knowledge' ); ?>
+					<?php esc_html_e( 'Please select one of the locations below, then click Submit.', 'local-knowledge' ); ?>
 				</p>
 			<?php elseif ( 'invalid_choice' === $feedback ) : ?>
 				<p class="lk-game__feedback-message">
@@ -435,7 +435,13 @@ $handoff_game_number = isset( $handoff_game_number ) ? (int) $handoff_game_numbe
 			</fieldset>
 
 			<button type="submit" class="lk-game__submit">
-				<?php esc_html_e( 'Submit', 'local-knowledge' ); ?>
+				<?php
+				if ( 'incorrect' === $feedback ) {
+					esc_html_e( 'Try Again', 'local-knowledge' );
+				} else {
+					esc_html_e( 'Submit', 'local-knowledge' );
+				}
+				?>
 			</button>
 		</form>
 	<?php elseif ( ! $playable ) : ?>
