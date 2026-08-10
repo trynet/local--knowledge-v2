@@ -10,6 +10,7 @@ declare(strict_types=1);
 namespace JoyOfCode\LocalKnowledge\Frontend;
 
 use JoyOfCode\LocalKnowledge\Admin\GamePostType;
+use JoyOfCode\LocalKnowledge\Player\Game2ResultPersister;
 
 defined( 'ABSPATH' ) || exit;
 
@@ -242,6 +243,7 @@ final class GamePlay {
 			$state['ended']        = true;
 			$state['result_type']  = 'idk';
 			$this->state_store->save_public_state( $state );
+			( new Game2ResultPersister() )->maybe_persist( $game_id, $game_number, $state );
 
 			$result['feedback'] = 'idk';
 			return $result;
@@ -267,6 +269,7 @@ final class GamePlay {
 			$state['ended']        = true;
 			$state['result_type']  = 'correct';
 			$this->state_store->save_public_state( $state );
+			( new Game2ResultPersister() )->maybe_persist( $game_id, $game_number, $state );
 
 			$result['feedback'] = 'correct';
 			return $result;
