@@ -61,9 +61,10 @@ final class Shortcodes {
 			? sanitize_key( wp_unslash( (string) $_POST['lk_game_action'] ) )
 			: '';
 
-		if ( GamePlay::FORM_ACTION !== $action ) {
-			// Registration POSTs are evaluated during shortcode render so
-			// request_result stays on the same RegistrationGateway instance.
+		$is_gameplay     = GamePlay::FORM_ACTION === $action;
+		$is_registration = RegistrationGateway::FORM_ACTION === $action;
+
+		if ( ! $is_gameplay && ! $is_registration ) {
 			return;
 		}
 
@@ -92,7 +93,10 @@ final class Shortcodes {
 
 		$screen = new PublicGameScreen();
 		$screen->process_request( $game_id, $game_number );
-		$this->processed_post = true;
+
+		if ( $is_gameplay ) {
+			$this->processed_post = true;
+		}
 	}
 
 	/**
@@ -102,6 +106,10 @@ final class Shortcodes {
 	 */
 	public function render_current_game( $atts = array() ): string {
 		unset( $atts );
+
+		if ( AuthNav::is_post_logout_view() ) {
+			return $this->render_logged_out_notice();
+		}
 
 		$resolver = new CurrentGameResolver();
 		$user_id  = is_user_logged_in() ? get_current_user_id() : 0;
@@ -165,6 +173,22 @@ final class Shortcodes {
 		}
 
 		return $this->render_game_html( $game_id, $game_number, $overlay );
+	}
+
+	/**
+	 * Public notice after a deliberate WordPress logout.
+	 */
+	private function render_logged_out_notice(): string {
+		$login = wp_login_url( AuthNav::play_destination() );
+
+		return '<div class="lk-game-message lk-logged-out" role="status">'
+			. '<p>'
+			. esc_html__( 'Thanks for playing Local Knowledge — at least for now.', 'local-knowledge' )
+			. '</p>'
+			. '<p><a href="' . esc_url( $login ) . '">'
+			. esc_html__( 'Log In', 'local-knowledge' )
+			. '</a></p>'
+			. '</div>';
 	}
 
 	/**

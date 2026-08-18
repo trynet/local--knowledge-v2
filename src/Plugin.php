@@ -13,6 +13,7 @@ use JoyOfCode\LocalKnowledge\Admin\GameEditor;
 use JoyOfCode\LocalKnowledge\Admin\GamePostType;
 use JoyOfCode\LocalKnowledge\Admin\GamePreview;
 use JoyOfCode\LocalKnowledge\Admin\GameValidator;
+use JoyOfCode\LocalKnowledge\Frontend\AuthNav;
 use JoyOfCode\LocalKnowledge\Frontend\GamePlay;
 use JoyOfCode\LocalKnowledge\Frontend\GameRoute;
 use JoyOfCode\LocalKnowledge\Frontend\LoginRedirect;
@@ -56,5 +57,8 @@ final class Plugin {
 
 		$login_redirect = new LoginRedirect();
 		$login_redirect->register();
+
+		$auth_nav = new AuthNav();
+		$auth_nav->register();
 	}
 }

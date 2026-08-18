@@ -20,7 +20,7 @@ defined( 'ABSPATH' ) || exit;
  * Validates registration, creates the player account, and transfers Game 1 results.
  *
  * Eligibility and scoring come only from authoritative GameState / permanent results.
- * Successful registration never auto-logs the player in.
+ * Successful registration logs the player in and redirects to Play.
  */
 final class RegistrationGateway {
 
@@ -81,7 +81,7 @@ final class RegistrationGateway {
 	/**
 	 * If this is a registration POST, validate and create the account.
 	 *
-	 * Validation failures and success both render in-place (no auto-login / redirect).
+	 * Validation failures render in-place. Success logs the player in and redirects to Play.
 	 *
 	 * @param int $game_id     Published Game post ID.
 	 * @param int $game_number Game Number from the route.
@@ -168,7 +168,7 @@ final class RegistrationGateway {
 			$extras['completion_result'] = $result;
 			$extras['show_registration'] = false;
 			$extras['registration_info'] = __(
-				'This Game 1 attempt has already been registered. Please check your email for the password setup link, or log in to continue.',
+				'This Game 1 attempt has already been registered. Please log in to continue.',
 				'local-knowledge'
 			);
 			return $extras;
@@ -317,6 +317,9 @@ final class RegistrationGateway {
 			? trim( (string) wp_unslash( $_POST['lk_username'] ) )
 			: '';
 		$user         = sanitize_user( $raw_username, true );
+		$password     = isset( $_POST['lk_password'] )
+			? (string) wp_unslash( $_POST['lk_password'] )
+			: '';
 
 		$values['first_name']       = $first;
 		$values['last_name']        = $last;
@@ -350,6 +353,10 @@ final class RegistrationGateway {
 			$errors[] = __( 'That Username is already taken.', 'local-knowledge' );
 		}
 
+		if ( '' === $password ) {
+			$errors[] = __( 'Password is required.', 'local-knowledge' );
+		}
+
 		if ( array() !== $errors ) {
 			$out['registration_errors'] = $errors;
 			return $out;
@@ -365,8 +372,11 @@ final class RegistrationGateway {
 				'last_name'  => $last,
 				'email'      => $email,
 				'username'   => $user,
+				'password'   => $password,
 			)
 		);
+
+		$password = '';
 
 		if ( is_wp_error( $created ) ) {
 			$out['registration_errors'][] = $created->get_error_message();
@@ -401,13 +411,17 @@ final class RegistrationGateway {
 			return $out;
 		}
 
-		// Success: remain logged out; show only the email instruction.
-		$out['show_registration']         = false;
-		$out['show_registration_thanks']  = true;
-		$out['registration_success']      = false;
-		$out['registration_errors']       = array();
+		wp_set_current_user( $user_id );
+		wp_set_auth_cookie( $user_id, true );
 
-		return $out;
+		$play = PlayPage::get_url();
+
+		if ( '' === $play ) {
+			$play = home_url( '/' );
+		}
+
+		wp_safe_redirect( $play, 303 );
+		exit;
 	}
 
 	/**

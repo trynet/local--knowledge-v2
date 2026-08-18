@@ -238,10 +238,7 @@ final class GameRenderer {
 
 		$is_preview  = ! empty( $view['is_preview'] );
 		$playable    = ! $is_preview && ! empty( $view['playable'] );
-		$game_locked = $playable && (
-			! empty( $view['game_locked'] )
-			|| ! empty( $view['show_registration_thanks'] )
-		);
+		$game_locked = $playable && ! empty( $view['game_locked'] );
 		$show_idk    = $playable && ! $game_locked && $show_comparison && ! empty( $view['show_idk'] );
 
 		$correct_label = '';
@@ -275,8 +272,7 @@ final class GameRenderer {
 			|| in_array( $completion_result, array( 'correct', 'idk' ), true )
 		);
 
-		$show_registration_thanks = $playable && ! empty( $view['show_registration_thanks'] );
-		$show_registration        = $show_completion && ! empty( $view['show_registration'] ) && ! $show_registration_thanks;
+		$show_registration        = $show_completion && ! empty( $view['show_registration'] );
 		$registration_prompt      = isset( $view['registration_prompt'] )
 			? sanitize_text_field( (string) $view['registration_prompt'] )
 			: '';
@@ -356,7 +352,6 @@ final class GameRenderer {
 			'registration_errors'             => $registration_errors,
 			'registration_values'             => $registration_values,
 			'registration_info'               => $registration_info,
-			'show_registration_thanks'        => $show_registration_thanks,
 			'show_game1_handoff'              => $show_game1_handoff && null !== $game1_handoff_points,
 			'game1_handoff_points'            => $game1_handoff_points,
 			'current_total_points'            => $current_total_points,

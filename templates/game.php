@@ -75,7 +75,6 @@ $registration_nonce_field  = isset( $registration_nonce_field ) ? (string) $regi
 $registration_form_action_value = isset( $registration_form_action_value ) ? (string) $registration_form_action_value : '';
 $has_reg_errors         = array() !== $registration_errors;
 $registration_info      = isset( $registration_info ) ? (string) $registration_info : '';
-$show_registration_thanks = ! empty( $show_registration_thanks );
 $show_game1_handoff     = ! empty( $show_game1_handoff );
 if ( ! isset( $game1_handoff_points ) || null === $game1_handoff_points ) {
 	$game1_handoff_points = null;
@@ -88,9 +87,20 @@ if ( ! isset( $current_total_points ) || null === $current_total_points ) {
 	$current_total_points = (int) $current_total_points;
 }
 $handoff_game_number = isset( $handoff_game_number ) ? (int) $handoff_game_number : 1;
+$show_post_registration = ! empty( $show_post_registration );
+$post_registration_title = isset( $post_registration_title ) ? (string) $post_registration_title : '';
+$post_registration_messages = isset( $post_registration_messages ) && is_array( $post_registration_messages ) ? $post_registration_messages : array();
+if ( ! isset( $player_points ) || null === $player_points ) {
+	$player_points = null;
+} else {
+	$player_points = (int) $player_points;
+}
+$show_continue_game_2   = ! empty( $show_continue_game_2 );
+$continue_game_2_url    = isset( $continue_game_2_url ) ? (string) $continue_game_2_url : '';
+$continue_game_2_label  = isset( $continue_game_2_label ) ? (string) $continue_game_2_label : '';
+$game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavailable : '';
 ?>
 <main class="lk-game<?php echo $show_comparison ? ' lk-game--comparison' : ''; ?>">
-	<?php if ( ! $show_registration_thanks ) : ?>
 	<?php if ( $is_preview ) : ?>
 		<div class="lk-game__preview-notice" role="status">
 			<?php esc_html_e( 'Preview Mode — No player progress or scores will be recorded.', 'local-knowledge' ); ?>
@@ -214,29 +224,13 @@ $handoff_game_number = isset( $handoff_game_number ) ? (int) $handoff_game_numbe
 			</dialog>
 		</section>
 	<?php endif; ?>
-	<?php endif; // ! $show_registration_thanks ?>
 
 	<?php
 	// Locked correct/IDK completion — gate on game_locked, not an unrelated flag
 	// (e.g. show_comparison / show_idk) that is false after a View 1 correct answer.
 	$completion_type = '' !== $completion_result ? $completion_result : $feedback;
 	?>
-	<?php if ( $show_registration_thanks ) : ?>
-		<section class="lk-game__registration-thanks" aria-labelledby="lk-registration-thanks-heading" role="status">
-			<h2 id="lk-registration-thanks-heading" class="lk-game__registration-thanks-title">
-				<?php esc_html_e( 'Thank you for registering', 'local-knowledge' ); ?>
-			</h2>
-			<p>
-				<?php
-				esc_html_e(
-					'To see how many points you scored and continue playing, check your email to create your account password.',
-					'local-knowledge'
-				);
-				?>
-			</p>
-		</section>
-
-	<?php elseif ( $playable && $game_locked && in_array( $completion_type, array( 'correct', 'idk' ), true ) ) : ?>
+	<?php if ( $playable && $game_locked && in_array( $completion_type, array( 'correct', 'idk' ), true ) ) : ?>
 		<section class="lk-game__completion" aria-labelledby="lk-game-complete-heading">
 			<h2 id="lk-game-complete-heading" class="lk-game__completion-title">
 				<?php esc_html_e( 'Game Complete', 'local-knowledge' ); ?>
@@ -273,7 +267,46 @@ $handoff_game_number = isset( $handoff_game_number ) ? (int) $handoff_game_numbe
 			<?php endif; ?>
 		</section>
 
-		<?php if ( '' !== $registration_info ) : ?>
+		<?php if ( ! empty( $show_post_registration ) ) : ?>
+			<section class="lk-game__post-registration" aria-labelledby="lk-post-registration-heading">
+				<h2 id="lk-post-registration-heading" class="lk-game__post-registration-title">
+					<?php echo esc_html( '' !== $post_registration_title ? $post_registration_title : __( 'Account created', 'local-knowledge' ) ); ?>
+				</h2>
+
+				<div class="lk-game__post-registration-body" role="status">
+					<?php if ( isset( $post_registration_messages ) && is_array( $post_registration_messages ) ) : ?>
+						<?php foreach ( $post_registration_messages as $post_msg ) : ?>
+							<p><?php echo esc_html( (string) $post_msg ); ?></p>
+						<?php endforeach; ?>
+					<?php endif; ?>
+
+					<?php if ( null !== $player_points ) : ?>
+						<p class="lk-game__player-points">
+							<?php
+							printf(
+								/* translators: %d: points earned */
+								esc_html__( 'Game 1 score: %d points', 'local-knowledge' ),
+								(int) $player_points
+							);
+							?>
+						</p>
+					<?php endif; ?>
+				</div>
+
+				<?php if ( ! empty( $show_continue_game_2 ) && '' !== $continue_game_2_url ) : ?>
+					<p class="lk-game__continue">
+						<a class="lk-game__submit lk-game__submit--continue" href="<?php echo esc_url( $continue_game_2_url ); ?>">
+							<?php echo esc_html( '' !== $continue_game_2_label ? $continue_game_2_label : __( 'Continue to Game 2', 'local-knowledge' ) ); ?>
+						</a>
+					</p>
+				<?php elseif ( '' !== $game_2_unavailable ) : ?>
+					<p class="lk-game__game2-unavailable" role="status">
+						<?php echo esc_html( $game_2_unavailable ); ?>
+					</p>
+				<?php endif; ?>
+			</section>
+
+		<?php elseif ( '' !== $registration_info ) : ?>
 			<div class="lk-game__registration-info" role="status">
 				<p><?php echo esc_html( $registration_info ); ?></p>
 			</div>
@@ -359,6 +392,18 @@ $handoff_game_number = isset( $handoff_game_number ) ? (int) $handoff_game_numbe
 							/>
 						</p>
 
+						<p class="lk-game__field">
+							<label for="lk-password"><?php esc_html_e( 'Password', 'local-knowledge' ); ?></label>
+							<input
+								type="password"
+								id="lk-password"
+								name="lk_password"
+								autocomplete="new-password"
+								<?php echo $has_reg_errors ? 'aria-describedby="lk-registration-errors"' : ''; ?>
+								required
+							/>
+						</p>
+
 						<button type="submit" class="lk-game__submit lk-game__submit--register">
 							<?php esc_html_e( 'Register', 'local-knowledge' ); ?>
 						</button>
@@ -375,7 +420,7 @@ $handoff_game_number = isset( $handoff_game_number ) ? (int) $handoff_game_numbe
 				</p>
 			<?php elseif ( 'missing' === $feedback ) : ?>
 				<p class="lk-game__feedback-message">
-					<?php esc_html_e( 'Please select one of the locations below, then click Submit.', 'local-knowledge' ); ?>
+					<?php esc_html_e( 'Please select a location before submitting.', 'local-knowledge' ); ?>
 				</p>
 			<?php elseif ( 'invalid_choice' === $feedback ) : ?>
 				<p class="lk-game__feedback-message">
