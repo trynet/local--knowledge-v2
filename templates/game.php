@@ -87,6 +87,9 @@ if ( ! isset( $current_total_points ) || null === $current_total_points ) {
 	$current_total_points = (int) $current_total_points;
 }
 $handoff_game_number = isset( $handoff_game_number ) ? (int) $handoff_game_number : 1;
+$historical_information = isset( $historical_information ) ? (string) $historical_information : '';
+$show_proceed_next_game = ! empty( $show_proceed_next_game );
+$proceed_next_game_url  = isset( $proceed_next_game_url ) ? (string) $proceed_next_game_url : '';
 $show_post_registration = ! empty( $show_post_registration );
 $post_registration_title = isset( $post_registration_title ) ? (string) $post_registration_title : '';
 $post_registration_messages = isset( $post_registration_messages ) && is_array( $post_registration_messages ) ? $post_registration_messages : array();
@@ -258,6 +261,12 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 						?>
 					</p>
 				<?php endif; ?>
+
+				<?php if ( in_array( $completion_type, array( 'correct', 'idk' ), true ) && '' !== $historical_information ) : ?>
+					<div class="lk-game__historical">
+						<?php echo wp_kses_post( $historical_information ); ?>
+					</div>
+				<?php endif; ?>
 			</div>
 
 			<?php if ( $show_registration && '' !== $registration_prompt ) : ?>
@@ -266,6 +275,14 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 				</p>
 			<?php endif; ?>
 		</section>
+
+		<?php if ( $show_proceed_next_game && '' !== $proceed_next_game_url ) : ?>
+			<p class="lk-game__proceed">
+				<a class="lk-game__submit lk-game__submit--proceed" href="<?php echo esc_url( $proceed_next_game_url ); ?>">
+					<?php esc_html_e( 'Proceed to the Next Game', 'local-knowledge' ); ?>
+				</a>
+			</p>
+		<?php endif; ?>
 
 		<?php if ( ! empty( $show_post_registration ) ) : ?>
 			<section class="lk-game__post-registration" aria-labelledby="lk-post-registration-heading">

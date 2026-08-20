@@ -111,6 +111,12 @@ final class Shortcodes {
 			return $this->render_logged_out_notice();
 		}
 
+		$completion_view = $this->maybe_render_completion_flag_view();
+
+		if ( null !== $completion_view ) {
+			return $completion_view;
+		}
+
 		$resolver = new CurrentGameResolver();
 		$user_id  = is_user_logged_in() ? get_current_user_id() : 0;
 		$resolved = $resolver->resolve( $user_id );
@@ -173,6 +179,124 @@ final class Shortcodes {
 		}
 
 		return $this->render_game_html( $game_id, $game_number, $overlay );
+	}
+
+	/**
+	 * When lk_game_complete is present, show the validated completed game before resolver advances.
+	 */
+	private function maybe_render_completion_flag_view(): ?string {
+		if ( ! isset( $_GET[ GamePlay::COMPLETE_QUERY ] ) ) {
+			return null;
+		}
+
+		if ( ! is_user_logged_in() ) {
+			return null;
+		}
+
+		$game_number = absint( wp_unslash( (string) $_GET[ GamePlay::COMPLETE_QUERY ] ) );
+
+		if ( $game_number < 2 || $game_number > 10 ) {
+			return null;
+		}
+
+		$user_id   = get_current_user_id();
+		$results   = new PlayerResultRepository();
+		$permanent = $results->get_result( $user_id, $game_number );
+
+		if ( null === $permanent ) {
+			return null;
+		}
+
+		$result_type = isset( $permanent['result_type'] ) ? sanitize_key( (string) $permanent['result_type'] ) : '';
+
+		if ( ! in_array( $result_type, array( 'correct', 'idk' ), true ) ) {
+			return null;
+		}
+
+		$game_id = isset( $permanent['game_id'] ) ? absint( $permanent['game_id'] ) : 0;
+
+		if ( $game_id < 1 ) {
+			return null;
+		}
+
+		$post = get_post( $game_id );
+
+		if ( ! $post instanceof \WP_Post
+			|| GamePostType::POST_TYPE !== $post->post_type
+			|| 'publish' !== $post->post_status
+		) {
+			return null;
+		}
+
+		$stored_number = absint( get_post_meta( $game_id, GameDisplayData::META_KEYS['game_number'], true ) );
+
+		if ( $stored_number !== $game_number ) {
+			return null;
+		}
+
+		$display = new GameDisplayData();
+
+		if ( array() !== $display->get_completeness_errors( $game_id ) ) {
+			return null;
+		}
+
+		$overlay = $this->build_completion_overlay( $game_id, $game_number, $permanent );
+
+		return $this->render_game_html( $game_id, $game_number, $overlay );
+	}
+
+	/**
+	 * View overlay for a logged-in player's locked completion (from permanent result).
+	 *
+	 * @param int                  $game_id     Game post ID.
+	 * @param int                  $game_number Game Number.
+	 * @param array<string, mixed> $permanent   Stored player result.
+	 * @return array<string, mixed>
+	 */
+	private function build_completion_overlay( int $game_id, int $game_number, array $permanent ): array {
+		$display = new GameDisplayData();
+		$key     = $display->get_correct_location_key( $game_id );
+
+		$view = isset( $permanent['completed_view'] ) ? absint( $permanent['completed_view'] ) : 1;
+		$view = max( 1, min( GameState::VIEW_COMPARISON, $view ) );
+
+		$result_type = isset( $permanent['result_type'] ) ? sanitize_key( (string) $permanent['result_type'] ) : 'correct';
+
+		if ( ! in_array( $result_type, array( 'correct', 'idk' ), true ) ) {
+			$result_type = 'correct';
+		}
+
+		$overlay = array(
+			'game_locked'            => true,
+			'show_completion'        => true,
+			'completion_result'      => $result_type,
+			'feedback'               => $result_type,
+			'current_view'           => $view,
+			'show_idk'               => false,
+			'show_registration'      => false,
+			'correct_location_label' => '' !== $key ? $display->get_location_label( $game_id, $key ) : '',
+		);
+
+		$historical = $display->get_historical_information( $game_id );
+
+		if ( '' !== $historical ) {
+			$overlay['historical_information'] = $historical;
+		}
+
+		if ( $game_number >= 2 && $game_number <= 9 ) {
+			$play = PlayPage::get_url();
+
+			$overlay['show_proceed_next_game'] = true;
+			$overlay['proceed_next_game_url']  = '' !== $play ? $play : home_url( '/' );
+		}
+
+		if ( GameState::VIEW_COMPARISON === $view ) {
+			$overlay['show_comparison']   = true;
+			$overlay['show_large_image']  = false;
+			$overlay['comparison_images'] = $display->get_comparison_images( $game_id );
+		}
+
+		return $overlay;
 	}
 
 	/**

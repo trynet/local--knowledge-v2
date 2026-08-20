@@ -192,6 +192,20 @@ final class RegistrationGateway {
 			}
 		}
 
+		if ( in_array( $result, array( 'correct', 'idk' ), true ) ) {
+			$display    = new GameDisplayData();
+			$historical = $display->get_historical_information( $game_id );
+
+			if ( '' !== $historical ) {
+				$extras['historical_information'] = $historical;
+			}
+		}
+
+		// Game 1 registration gates the answer reveal; hide the official location until after register.
+		if ( ! empty( $extras['show_registration'] ) ) {
+			$extras['correct_location_label'] = '';
+		}
+
 		return $extras;
 	}
 

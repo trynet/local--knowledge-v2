@@ -33,6 +33,11 @@ final class GamePlay {
 	public const FLASH_QUERY_VAR = 'lk_msg';
 
 	/**
+	 * Query flag: show a logged-in player's just-completed game before resolver advances.
+	 */
+	public const COMPLETE_QUERY = 'lk_game_complete';
+
+	/**
 	 * Flash token lifetime in seconds.
 	 */
 	private const FLASH_TTL = 60;
@@ -82,7 +87,7 @@ final class GamePlay {
 			(string) $result['selected_choice']
 		);
 
-		$this->redirect_with_flash( $game_number, $token );
+		$this->redirect_with_flash( $game_number, $token, (string) $result['feedback'] );
 	}
 
 	/**
@@ -128,6 +133,10 @@ final class GamePlay {
 			$extras['feedback']          = $result;
 			$extras['show_completion']   = true;
 			$extras['completion_result'] = $result;
+
+			if ( in_array( $result, array( 'correct', 'idk' ), true ) ) {
+				$extras = $this->append_correct_completion_extras( $extras, $game_id, $game_number );
+			}
 		}
 
 		$flash = $this->decode_flash_from_request( $game_id );
@@ -298,8 +307,9 @@ final class GamePlay {
 	 *
 	 * @param int    $game_number Game Number.
 	 * @param string $token       Signed flash token.
+	 * @param string $feedback    Submission feedback code.
 	 */
-	private function redirect_with_flash( int $game_number, string $token ): void {
+	private function redirect_with_flash( int $game_number, string $token, string $feedback ): void {
 		$url = PlayPage::get_url();
 
 		if ( '' === $url ) {
@@ -311,6 +321,10 @@ final class GamePlay {
 		}
 
 		$redirect = add_query_arg( self::FLASH_QUERY_VAR, $token, $url );
+
+		if ( in_array( $feedback, array( 'correct', 'idk' ), true ) && is_user_logged_in() && $game_number >= 2 && $game_number <= 10 ) {
+			$redirect = add_query_arg( self::COMPLETE_QUERY, (string) $game_number, $redirect );
+		}
 
 		wp_safe_redirect( $redirect, 303 );
 		exit;
@@ -454,5 +468,31 @@ final class GamePlay {
 	 */
 	private function nonce_action( int $game_id ): string {
 		return 'lk_game_submit_' . $game_id;
+	}
+
+	/**
+	 * Historical information and Proceed control after a locked completion (correct or IDK).
+	 *
+	 * @param array<string, mixed> $extras      View extras.
+	 * @param int                  $game_id     Game post ID.
+	 * @param int                  $game_number Game Number.
+	 * @return array<string, mixed>
+	 */
+	private function append_correct_completion_extras( array $extras, int $game_id, int $game_number ): array {
+		$display    = new GameDisplayData();
+		$historical = $display->get_historical_information( $game_id );
+
+		if ( '' !== $historical ) {
+			$extras['historical_information'] = $historical;
+		}
+
+		if ( is_user_logged_in() && $game_number >= 2 && $game_number <= 9 ) {
+			$play = PlayPage::get_url();
+
+			$extras['show_proceed_next_game'] = true;
+			$extras['proceed_next_game_url']  = '' !== $play ? $play : home_url( '/' );
+		}
+
+		return $extras;
 	}
 }

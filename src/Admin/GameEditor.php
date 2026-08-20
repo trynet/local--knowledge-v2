@@ -37,16 +37,17 @@ final class GameEditor {
 	 * @var array<string, string>
 	 */
 	private const META_KEYS = array(
-		'game_number'      => '_lk_game_number',
-		'image_1_id'       => '_lk_image_1_id',
-		'image_2_id'       => '_lk_image_2_id',
-		'image_3_id'       => '_lk_image_3_id',
-		'image_4_id'       => '_lk_image_4_id',
-		'location_1'       => '_lk_location_1',
-		'location_2'       => '_lk_location_2',
-		'location_3'       => '_lk_location_3',
-		'location_4'       => '_lk_location_4',
-		'correct_location' => '_lk_correct_location',
+		'game_number'            => '_lk_game_number',
+		'image_1_id'             => '_lk_image_1_id',
+		'image_2_id'             => '_lk_image_2_id',
+		'image_3_id'             => '_lk_image_3_id',
+		'image_4_id'             => '_lk_image_4_id',
+		'location_1'             => '_lk_location_1',
+		'location_2'             => '_lk_location_2',
+		'location_3'             => '_lk_location_3',
+		'location_4'             => '_lk_location_4',
+		'correct_location'       => '_lk_correct_location',
+		'historical_information' => '_lk_historical_information',
 	);
 
 	/**
@@ -108,6 +109,19 @@ final class GameEditor {
 				)
 			);
 		}
+
+		register_post_meta(
+			GamePostType::POST_TYPE,
+			self::META_KEYS['historical_information'],
+			array(
+				'type'              => 'string',
+				'single'            => true,
+				'default'           => '',
+				'sanitize_callback' => 'wp_kses_post',
+				'auth_callback'     => array( $this, 'can_edit_games' ),
+				'show_in_rest'      => false,
+			)
+		);
 	}
 
 	/**
@@ -155,6 +169,8 @@ final class GameEditor {
 			3 => (int) get_post_meta( $post->ID, self::META_KEYS['image_3_id'], true ),
 			4 => (int) get_post_meta( $post->ID, self::META_KEYS['image_4_id'], true ),
 		);
+
+		$historical = (string) get_post_meta( $post->ID, self::META_KEYS['historical_information'], true );
 		?>
 		<div class="lk-game-details">
 			<p>
@@ -229,6 +245,29 @@ final class GameEditor {
 					<?php endforeach; ?>
 				</select>
 			</p>
+
+			<div class="lk-game-details__historical">
+				<p>
+					<label for="lk_historical_information">
+						<strong><?php esc_html_e( 'Historical Information', 'local-knowledge' ); ?></strong>
+					</label>
+				</p>
+				<?php
+				wp_editor(
+					$historical,
+					'lk_historical_information',
+					array(
+						'textarea_name' => 'lk_historical_information',
+						'media_buttons' => false,
+						'quicktags'     => true,
+						'tinymce'       => array(
+							'toolbar1' => 'bold,italic,link,unlink',
+							'toolbar2' => '',
+						),
+					)
+				);
+				?>
+			</div>
 		</div>
 		<?php
 	}
@@ -346,6 +385,11 @@ final class GameEditor {
 		}
 
 		update_post_meta( $post_id, self::META_KEYS['correct_location'], $correct );
+
+		$historical = isset( $_POST['lk_historical_information'] )
+			? wp_kses_post( wp_unslash( (string) $_POST['lk_historical_information'] ) )
+			: '';
+		update_post_meta( $post_id, self::META_KEYS['historical_information'], $historical );
 	}
 
 	/**

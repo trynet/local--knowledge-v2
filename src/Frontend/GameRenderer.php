@@ -321,6 +321,15 @@ final class GameRenderer {
 			$current_total_points = $game1_handoff_points;
 		}
 
+		$historical_information = isset( $view['historical_information'] )
+			? wp_kses_post( (string) $view['historical_information'] )
+			: '';
+
+		$show_proceed_next_game = ! empty( $view['show_proceed_next_game'] );
+		$proceed_next_game_url  = isset( $view['proceed_next_game_url'] )
+			? esc_url_raw( (string) $view['proceed_next_game_url'] )
+			: '';
+
 		return array(
 			'game_number'                     => $game_number,
 			'image_url'                       => $image_url,
@@ -359,6 +368,9 @@ final class GameRenderer {
 			'registration_nonce_action'       => isset( $view['registration_nonce_action'] ) ? sanitize_text_field( (string) $view['registration_nonce_action'] ) : '',
 			'registration_nonce_field'        => isset( $view['registration_nonce_field'] ) ? sanitize_key( (string) $view['registration_nonce_field'] ) : 'lk_register_nonce',
 			'registration_form_action_value'  => isset( $view['registration_form_action_value'] ) ? sanitize_key( (string) $view['registration_form_action_value'] ) : RegistrationGateway::FORM_ACTION,
+			'historical_information'          => $historical_information,
+			'show_proceed_next_game'          => $show_proceed_next_game,
+			'proceed_next_game_url'           => $proceed_next_game_url,
 		);
 	}
 

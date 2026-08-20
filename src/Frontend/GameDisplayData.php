@@ -25,16 +25,17 @@ final class GameDisplayData {
 	 * @var array<string, string>
 	 */
 	public const META_KEYS = array(
-		'game_number'      => '_lk_game_number',
-		'image_1_id'       => '_lk_image_1_id',
-		'image_2_id'       => '_lk_image_2_id',
-		'image_3_id'       => '_lk_image_3_id',
-		'image_4_id'       => '_lk_image_4_id',
-		'location_1'       => '_lk_location_1',
-		'location_2'       => '_lk_location_2',
-		'location_3'       => '_lk_location_3',
-		'location_4'       => '_lk_location_4',
-		'correct_location' => '_lk_correct_location',
+		'game_number'            => '_lk_game_number',
+		'image_1_id'             => '_lk_image_1_id',
+		'image_2_id'             => '_lk_image_2_id',
+		'image_3_id'             => '_lk_image_3_id',
+		'image_4_id'             => '_lk_image_4_id',
+		'location_1'             => '_lk_location_1',
+		'location_2'             => '_lk_location_2',
+		'location_3'             => '_lk_location_3',
+		'location_4'             => '_lk_location_4',
+		'correct_location'       => '_lk_correct_location',
+		'historical_information' => '_lk_historical_information',
 	);
 
 	/**
@@ -254,6 +255,25 @@ final class GameDisplayData {
 		);
 
 		return in_array( $correct, array( '1', '2', '3', '4' ), true ) ? $correct : '';
+	}
+
+	/**
+	 * Sanitized historical/background HTML for a Game.
+	 *
+	 * @param int $game_id Game post ID.
+	 */
+	public function get_historical_information( int $game_id ): string {
+		if ( $game_id < 1 ) {
+			return '';
+		}
+
+		$raw = (string) get_post_meta( $game_id, self::META_KEYS['historical_information'], true );
+
+		if ( '' === trim( $raw ) ) {
+			return '';
+		}
+
+		return wp_kses_post( $raw );
 	}
 
 	/**
