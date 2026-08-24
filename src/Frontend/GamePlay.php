@@ -473,24 +473,31 @@ final class GamePlay {
 	/**
 	 * Historical information and Proceed control after a locked completion (correct or IDK).
 	 *
+	 * Game 1 historical information is deferred to the Game 2 handoff (registration gate).
+	 *
 	 * @param array<string, mixed> $extras      View extras.
 	 * @param int                  $game_id     Game post ID.
 	 * @param int                  $game_number Game Number.
 	 * @return array<string, mixed>
 	 */
 	private function append_correct_completion_extras( array $extras, int $game_id, int $game_number ): array {
-		$display    = new GameDisplayData();
-		$historical = $display->get_historical_information( $game_id );
+		// Games 2–10: show this game's historical on its completion screen.
+		if ( $game_number >= 2 ) {
+			$display    = new GameDisplayData();
+			$historical = $display->get_historical_information( $game_id );
 
-		if ( '' !== $historical ) {
-			$extras['historical_information'] = $historical;
+			if ( '' !== $historical ) {
+				$extras['historical_information'] = $historical;
+			}
 		}
 
 		if ( is_user_logged_in() && $game_number >= 2 && $game_number <= 9 ) {
 			$play = PlayPage::get_url();
+			$next = $game_number + 1;
 
-			$extras['show_proceed_next_game'] = true;
-			$extras['proceed_next_game_url']  = '' !== $play ? $play : home_url( '/' );
+			$extras['show_proceed_next_game']    = true;
+			$extras['proceed_next_game_url']     = '' !== $play ? $play : home_url( '/' );
+			$extras['proceed_next_game_number']  = $next;
 		}
 
 		return $extras;

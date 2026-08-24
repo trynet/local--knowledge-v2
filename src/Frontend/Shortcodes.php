@@ -129,6 +129,16 @@ final class Shortcodes {
 
 		if ( 'awaiting_next' === ( $resolved['status'] ?? '' ) ) {
 			$points = isset( $resolved['previous_points'] ) ? absint( $resolved['previous_points'] ) : 0;
+			$handoff_historical = '';
+
+			if ( $user_id > 0 ) {
+				$g1 = ( new PlayerResultRepository() )->get_result( $user_id, 1 );
+
+				if ( null !== $g1 && isset( $g1['game_id'] ) ) {
+					$handoff_historical = ( new GameDisplayData() )
+						->get_historical_information( absint( $g1['game_id'] ) );
+				}
+			}
 
 			ob_start();
 			?>
@@ -150,6 +160,11 @@ final class Shortcodes {
 					);
 					?>
 				</p>
+				<?php if ( '' !== $handoff_historical ) : ?>
+					<div class="lk-game__historical">
+						<?php echo wp_kses_post( $handoff_historical ); ?>
+					</div>
+				<?php endif; ?>
 			</section>
 			<?php
 			$html = ob_get_clean();
@@ -176,6 +191,20 @@ final class Shortcodes {
 			$overlay['handoff_game_number']  = $prev_num;
 			$overlay['current_total_points'] = ( new PlayerResultRepository() )
 				->get_total_points( $user_id );
+
+			// Game 1 historical appears only on the Game 2 handoff (after registration).
+			if ( 1 === $prev_num && $user_id > 0 ) {
+				$g1 = ( new PlayerResultRepository() )->get_result( $user_id, 1 );
+
+				if ( null !== $g1 && isset( $g1['game_id'] ) ) {
+					$historical = ( new GameDisplayData() )
+						->get_historical_information( absint( $g1['game_id'] ) );
+
+					if ( '' !== $historical ) {
+						$overlay['handoff_historical_information'] = $historical;
+					}
+				}
+			}
 		}
 
 		return $this->render_game_html( $game_id, $game_number, $overlay );
@@ -286,8 +315,9 @@ final class Shortcodes {
 		if ( $game_number >= 2 && $game_number <= 9 ) {
 			$play = PlayPage::get_url();
 
-			$overlay['show_proceed_next_game'] = true;
-			$overlay['proceed_next_game_url']  = '' !== $play ? $play : home_url( '/' );
+			$overlay['show_proceed_next_game']   = true;
+			$overlay['proceed_next_game_url']    = '' !== $play ? $play : home_url( '/' );
+			$overlay['proceed_next_game_number'] = $game_number + 1;
 		}
 
 		if ( GameState::VIEW_COMPARISON === $view ) {

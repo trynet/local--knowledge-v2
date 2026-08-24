@@ -325,13 +325,27 @@ final class GameRenderer {
 			? wp_kses_post( (string) $view['historical_information'] )
 			: '';
 
+		$handoff_historical_information = isset( $view['handoff_historical_information'] )
+			? wp_kses_post( (string) $view['handoff_historical_information'] )
+			: '';
+
 		$show_proceed_next_game = ! empty( $view['show_proceed_next_game'] );
 		$proceed_next_game_url  = isset( $view['proceed_next_game_url'] )
 			? esc_url_raw( (string) $view['proceed_next_game_url'] )
 			: '';
+		$proceed_next_game_number = isset( $view['proceed_next_game_number'] )
+			? absint( $view['proceed_next_game_number'] )
+			: 0;
+
+		if ( $show_proceed_next_game && $proceed_next_game_number < 1 ) {
+			$proceed_next_game_number = $game_number + 1;
+		}
+
+		$total_games = 10;
 
 		return array(
 			'game_number'                     => $game_number,
+			'total_games'                     => $total_games,
 			'image_url'                       => $image_url,
 			'image_alt'                       => $image_alt,
 			'locations'                       => $locations,
@@ -365,12 +379,14 @@ final class GameRenderer {
 			'game1_handoff_points'            => $game1_handoff_points,
 			'current_total_points'            => $current_total_points,
 			'handoff_game_number'             => max( 1, $handoff_game_number ),
+			'handoff_historical_information'  => $handoff_historical_information,
 			'registration_nonce_action'       => isset( $view['registration_nonce_action'] ) ? sanitize_text_field( (string) $view['registration_nonce_action'] ) : '',
 			'registration_nonce_field'        => isset( $view['registration_nonce_field'] ) ? sanitize_key( (string) $view['registration_nonce_field'] ) : 'lk_register_nonce',
 			'registration_form_action_value'  => isset( $view['registration_form_action_value'] ) ? sanitize_key( (string) $view['registration_form_action_value'] ) : RegistrationGateway::FORM_ACTION,
 			'historical_information'          => $historical_information,
 			'show_proceed_next_game'          => $show_proceed_next_game,
 			'proceed_next_game_url'           => $proceed_next_game_url,
+			'proceed_next_game_number'        => $proceed_next_game_number,
 		);
 	}
 

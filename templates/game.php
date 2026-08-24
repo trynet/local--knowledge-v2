@@ -87,9 +87,12 @@ if ( ! isset( $current_total_points ) || null === $current_total_points ) {
 	$current_total_points = (int) $current_total_points;
 }
 $handoff_game_number = isset( $handoff_game_number ) ? (int) $handoff_game_number : 1;
+$handoff_historical_information = isset( $handoff_historical_information ) ? (string) $handoff_historical_information : '';
 $historical_information = isset( $historical_information ) ? (string) $historical_information : '';
 $show_proceed_next_game = ! empty( $show_proceed_next_game );
 $proceed_next_game_url  = isset( $proceed_next_game_url ) ? (string) $proceed_next_game_url : '';
+$proceed_next_game_number = isset( $proceed_next_game_number ) ? (int) $proceed_next_game_number : 0;
+$total_games = isset( $total_games ) ? max( 1, (int) $total_games ) : 10;
 $show_post_registration = ! empty( $show_post_registration );
 $post_registration_title = isset( $post_registration_title ) ? (string) $post_registration_title : '';
 $post_registration_messages = isset( $post_registration_messages ) && is_array( $post_registration_messages ) ? $post_registration_messages : array();
@@ -142,6 +145,11 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 				);
 				?>
 			</p>
+			<?php if ( '' !== $handoff_historical_information ) : ?>
+				<div class="lk-game__historical lk-game__historical--handoff">
+					<?php echo wp_kses_post( $handoff_historical_information ); ?>
+				</div>
+			<?php endif; ?>
 		</section>
 	<?php endif; ?>
 
@@ -157,6 +165,32 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 			);
 			?>
 		</h1>
+		<div class="lk-game__progress" role="group" aria-labelledby="lk-game-progress-label">
+			<p id="lk-game-progress-label" class="lk-game__progress-label">
+				<?php
+				printf(
+					/* translators: 1: current game number, 2: total games */
+					esc_html__( 'Game %1$d of %2$d', 'local-knowledge' ),
+					(int) $game_number,
+					(int) $total_games
+				);
+				?>
+			</p>
+			<progress
+				class="lk-game__progress-bar"
+				value="<?php echo esc_attr( (string) (int) $game_number ); ?>"
+				max="<?php echo esc_attr( (string) (int) $total_games ); ?>"
+			>
+				<?php
+				printf(
+					/* translators: 1: current game number, 2: total games */
+					esc_html__( 'Game %1$d of %2$d', 'local-knowledge' ),
+					(int) $game_number,
+					(int) $total_games
+				);
+				?>
+			</progress>
+		</div>
 	</header>
 
 	<?php if ( $show_large_image && '' !== $image_url ) : ?>
@@ -279,7 +313,15 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 		<?php if ( $show_proceed_next_game && '' !== $proceed_next_game_url ) : ?>
 			<p class="lk-game__proceed">
 				<a class="lk-game__submit lk-game__submit--proceed" href="<?php echo esc_url( $proceed_next_game_url ); ?>">
-					<?php esc_html_e( 'Proceed to the Next Game', 'local-knowledge' ); ?>
+					<?php
+					echo esc_html(
+						sprintf(
+							/* translators: %d: next game number */
+							__( 'Go on to Game %d', 'local-knowledge' ),
+							max( 2, $proceed_next_game_number > 0 ? $proceed_next_game_number : ( (int) $game_number + 1 ) )
+						)
+					);
+					?>
 				</a>
 			</p>
 		<?php endif; ?>
