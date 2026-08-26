@@ -153,6 +153,15 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 		</section>
 	<?php endif; ?>
 
+	<?php if ( $show_large_image && '' !== $image_url ) : ?>
+		<section class="lk-game__rules" aria-labelledby="lk-game-rules-heading">
+			<h2 id="lk-game-rules-heading" class="lk-game__rules-title">
+				<?php esc_html_e( 'Rules', 'local-knowledge' ); ?>
+			</h2>
+			<div class="lk-game__rules-placeholder" aria-hidden="true"></div>
+		</section>
+	<?php endif; ?>
+
 	<header class="lk-game__header">
 		<h1 class="lk-game__title">
 			<?php
@@ -165,33 +174,34 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 			);
 			?>
 		</h1>
-		<div class="lk-game__progress" role="group" aria-labelledby="lk-game-progress-label">
-			<p id="lk-game-progress-label" class="lk-game__progress-label">
-				<?php
-				printf(
-					/* translators: 1: current game number, 2: total games */
-					esc_html__( 'Game %1$d of %2$d', 'local-knowledge' ),
-					(int) $game_number,
-					(int) $total_games
-				);
-				?>
-			</p>
-			<progress
-				class="lk-game__progress-bar"
-				value="<?php echo esc_attr( (string) (int) $game_number ); ?>"
-				max="<?php echo esc_attr( (string) (int) $total_games ); ?>"
-			>
-				<?php
-				printf(
-					/* translators: 1: current game number, 2: total games */
-					esc_html__( 'Game %1$d of %2$d', 'local-knowledge' ),
-					(int) $game_number,
-					(int) $total_games
-				);
-				?>
-			</progress>
-		</div>
 	</header>
+
+	<div class="lk-game__progress" role="group" aria-labelledby="lk-game-progress-label">
+		<p id="lk-game-progress-label" class="lk-game__progress-label">
+			<?php
+			printf(
+				/* translators: 1: current game number, 2: total games */
+				esc_html__( 'Game %1$d of %2$d', 'local-knowledge' ),
+				(int) $game_number,
+				(int) $total_games
+			);
+			?>
+		</p>
+		<progress
+			class="lk-game__progress-bar"
+			value="<?php echo esc_attr( (string) (int) $game_number ); ?>"
+			max="<?php echo esc_attr( (string) (int) $total_games ); ?>"
+		>
+			<?php
+			printf(
+				/* translators: 1: current game number, 2: total games */
+				esc_html__( 'Game %1$d of %2$d', 'local-knowledge' ),
+				(int) $game_number,
+				(int) $total_games
+			);
+			?>
+		</progress>
+	</div>
 
 	<?php if ( $show_large_image && '' !== $image_url ) : ?>
 		<figure class="lk-game__image-frame">
