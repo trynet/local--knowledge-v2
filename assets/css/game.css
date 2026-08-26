@@ -241,6 +241,131 @@
 	}
 }
 
+/*
+ * Completed-game layout (presentation only).
+ * Activated when the completion section is a direct child of .lk-game.
+ * Does not alter opening or comparison-play selectors above.
+ */
+.lk-game:has(> .lk-game__completion) {
+	width: min(100% - 2rem, 70rem);
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1.15fr);
+	grid-template-areas:
+		"preview preview"
+		"handoff handoff"
+		"rules rules"
+		"title title"
+		"completion media"
+		"proceed media"
+		"registration media"
+		"postreg media"
+		"reginfo media"
+		"regsuccess media"
+		"progress media";
+	column-gap: 1.5rem;
+	row-gap: 0.65rem;
+	align-items: start;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__preview-notice {
+	grid-area: preview;
+	margin-bottom: 0;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__handoff {
+	grid-area: handoff;
+	margin-bottom: 0;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__rules {
+	display: block;
+	grid-area: rules;
+	margin: 0 0 0.35rem;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__header {
+	grid-area: title;
+	margin: 0;
+	padding-bottom: 0.65rem;
+	text-align: left;
+	border-bottom: 1px solid #1d2327;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__completion {
+	grid-area: completion;
+	margin: 0;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__proceed {
+	grid-area: proceed;
+	margin: 0;
+	text-align: left;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__registration {
+	grid-area: registration;
+	margin: 0;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__post-registration {
+	grid-area: postreg;
+	margin: 0;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__registration-info {
+	grid-area: reginfo;
+	margin: 0;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__registration-success {
+	grid-area: regsuccess;
+	margin: 0;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__progress {
+	grid-area: progress;
+	margin: 0.5rem 0 0;
+	text-align: left;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__image-frame {
+	grid-area: media;
+	margin: 0;
+	align-self: start;
+}
+
+.lk-game:has(> .lk-game__completion) > .lk-game__comparison {
+	grid-area: media;
+	margin: 0;
+	align-self: start;
+}
+
+/* Keep a clean 2 × 2 thumbnail grid when comparison media is shown on completion. */
+.lk-game:has(> .lk-game__completion) .lk-game__comparison-grid {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+	.lk-game:has(> .lk-game__completion) {
+		width: min(100% - 1rem, 40rem);
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas:
+			"preview"
+			"handoff"
+			"rules"
+			"title"
+			"completion"
+			"proceed"
+			"registration"
+			"postreg"
+			"reginfo"
+			"regsuccess"
+			"progress"
+			"media";
+		column-gap: 0;
+	}
+}
+
 .lk-game__image-frame {
 	display: flex;
 	align-items: center;
