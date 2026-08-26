@@ -55,7 +55,7 @@
 	height: 0.65rem;
 }
 
-/* Rules: markup may exist with large image; only show on opening play layout. */
+/* Rules: markup may exist for opening/comparison; shown only by those layout selectors. */
 .lk-game__rules {
 	display: none;
 	margin: 0 0 1rem;
@@ -139,6 +139,93 @@
 
 @media (max-width: 720px) {
 	.lk-game:not(.lk-game--comparison):has(.lk-game__image-frame):has(.lk-game__form) {
+		width: min(100% - 1rem, 40rem);
+		grid-template-columns: minmax(0, 1fr);
+		grid-template-areas:
+			"preview"
+			"handoff"
+			"rules"
+			"title"
+			"feedback"
+			"form"
+			"progress"
+			"media";
+		column-gap: 0;
+	}
+}
+
+/*
+ * Comparison four-thumbnail + form layout (presentation only).
+ * Separate from the locked opening-screen selectors above.
+ */
+.lk-game.lk-game--comparison:has(.lk-game__form) {
+	width: min(100% - 2rem, 70rem);
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 2fr);
+	grid-template-areas:
+		"preview preview"
+		"handoff handoff"
+		"rules rules"
+		"title media"
+		"feedback media"
+		"form media"
+		"progress media";
+	column-gap: 1.5rem;
+	row-gap: 0.65rem;
+	align-items: start;
+}
+
+.lk-game.lk-game--comparison:has(.lk-game__form) > .lk-game__preview-notice {
+	grid-area: preview;
+	margin-bottom: 0;
+}
+
+.lk-game.lk-game--comparison:has(.lk-game__form) > .lk-game__handoff {
+	grid-area: handoff;
+	margin-bottom: 0;
+}
+
+.lk-game.lk-game--comparison:has(.lk-game__form) > .lk-game__rules {
+	display: block;
+	grid-area: rules;
+	margin: 0 0 0.35rem;
+}
+
+.lk-game.lk-game--comparison:has(.lk-game__form) > .lk-game__header {
+	grid-area: title;
+	margin: 0;
+	text-align: left;
+}
+
+.lk-game.lk-game--comparison:has(.lk-game__form) > .lk-game__feedback {
+	grid-area: feedback;
+	margin: 0;
+}
+
+.lk-game.lk-game--comparison:has(.lk-game__form) > .lk-game__form {
+	grid-area: form;
+	margin: 0;
+}
+
+.lk-game.lk-game--comparison:has(.lk-game__form) > .lk-game__progress {
+	grid-area: progress;
+	margin: 0.35rem 0 0;
+	text-align: left;
+}
+
+.lk-game.lk-game--comparison:has(.lk-game__form) > .lk-game__comparison {
+	grid-area: media;
+	margin: 0;
+	align-self: start;
+}
+
+/* Keep a clean 2 × 2 thumbnail grid in the comparison-play state. */
+.lk-game.lk-game--comparison:has(.lk-game__form) .lk-game__comparison-grid {
+	grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+@media (max-width: 720px) {
+	.lk-game.lk-game--comparison:has(.lk-game__form) {
 		width: min(100% - 1rem, 40rem);
 		grid-template-columns: minmax(0, 1fr);
 		grid-template-areas:

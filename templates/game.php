@@ -153,7 +153,7 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 		</section>
 	<?php endif; ?>
 
-	<?php if ( $show_large_image && '' !== $image_url ) : ?>
+	<?php if ( ( $show_large_image && '' !== $image_url ) || ( $show_comparison && array() !== $comparison_images ) ) : ?>
 		<section class="lk-game__rules" aria-labelledby="lk-game-rules-heading">
 			<h2 id="lk-game-rules-heading" class="lk-game__rules-title">
 				<?php esc_html_e( 'Rules', 'local-knowledge' ); ?>
