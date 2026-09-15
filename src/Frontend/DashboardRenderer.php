@@ -47,7 +47,7 @@ final class DashboardRenderer {
 		if ( ! is_user_logged_in() ) {
 			return '<div class="lk-dashboard lk-dashboard--guest">'
 				. '<h2 class="lk-how-to-play">' . esc_html__( 'How To Play The Game', 'local-knowledge' ) . '</h2>'
-				. $this->how_to_play_instructions_html()
+				. HowToPlay::instructions_html()
 				. '<p>'
 				. esc_html__( 'Please log in to view your Dashboard.', 'local-knowledge' )
 				. '</p></div>';
@@ -80,7 +80,7 @@ final class DashboardRenderer {
 		?>
 		<div class="lk-dashboard lk-dashboard--player">
 			<h2 class="lk-how-to-play"><?php esc_html_e( 'How To Play The Game', 'local-knowledge' ); ?></h2>
-			<?php echo $this->how_to_play_instructions_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper returns escaped HTML. ?>
+			<?php echo HowToPlay::instructions_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper returns escaped HTML. ?>
 			<p class="lk-dashboard__name">
 				<?php
 				printf(
@@ -122,15 +122,5 @@ final class DashboardRenderer {
 		$html = ob_get_clean();
 
 		return is_string( $html ) ? $html : '';
-	}
-
-	/**
-	 * Escaped How To Play instruction paragraphs.
-	 */
-	private function how_to_play_instructions_html(): string {
-		return '<p>' . esc_html__( 'You’ll see a photo of a location and four possible answers. Choose the location you think is correct and click Submit.', 'local-knowledge' ) . '</p>'
-			. '<p>' . esc_html__( 'A correct answer on the first photo earns 4 points. If you’re wrong, another photo is revealed and the possible score drops by one point with each additional photo.', 'local-knowledge' ) . '</p>'
-			. '<p>' . esc_html__( 'After all four photos have been revealed, you can continue guessing or choose I Don’t Know. An incorrect final answer or I Don’t Know earns 0 points.', 'local-knowledge' ) . '</p>'
-			. '<p>' . esc_html__( 'There are 10 games. Your scores from all 10 games are added together for your final score.', 'local-knowledge' ) . '</p>';
 	}
 }
