@@ -209,13 +209,11 @@ final class Shortcodes {
 
 		$html = $this->render_game_html( $game_id, $game_number, $overlay );
 
-		// Home heading: initial Game 1 only (view 1, not ended).
+		// Home heading: Game 1 while still in active play (not ended).
 		if ( 1 === $game_number ) {
 			$state = ( new GameState() )->get_public_state( $game_id );
-			$view  = isset( $state['current_view'] ) ? absint( $state['current_view'] ) : 0;
-			$ended = ! empty( $state['ended'] );
 
-			if ( ! $ended && 1 === $view ) {
+			if ( empty( $state['ended'] ) ) {
 				return $this->with_how_to_play_heading( $html );
 			}
 		}
@@ -488,7 +486,7 @@ final class Shortcodes {
 	}
 
 	/**
-	 * Prepend “How To Play The Game” (initial Game 1 Home screen only).
+	 * Prepend “How To Play The Game” and instructions (initial Game 1 Home screen only).
 	 *
 	 * @param string $html Shortcode body HTML.
 	 */
@@ -496,6 +494,10 @@ final class Shortcodes {
 		return '<h2 class="lk-how-to-play">'
 			. esc_html__( 'How To Play The Game', 'local-knowledge' )
 			. '</h2>'
+			. '<p>' . esc_html__( 'You’ll see a photo of a location and four possible answers. Choose the location you think is correct and click Submit.', 'local-knowledge' ) . '</p>'
+			. '<p>' . esc_html__( 'A correct answer on the first photo earns 4 points. If you’re wrong, another photo is revealed and the possible score drops by one point with each additional photo.', 'local-knowledge' ) . '</p>'
+			. '<p>' . esc_html__( 'After all four photos have been revealed, you can continue guessing or choose I Don’t Know. An incorrect final answer or I Don’t Know earns 0 points.', 'local-knowledge' ) . '</p>'
+			. '<p>' . esc_html__( 'There are 10 games. Your scores from all 10 games are added together for your final score.', 'local-knowledge' ) . '</p>'
 			. $html;
 	}
 }
