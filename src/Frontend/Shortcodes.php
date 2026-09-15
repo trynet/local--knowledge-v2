@@ -207,7 +207,20 @@ final class Shortcodes {
 			}
 		}
 
-		return $this->render_game_html( $game_id, $game_number, $overlay );
+		$html = $this->render_game_html( $game_id, $game_number, $overlay );
+
+		// Home heading: initial Game 1 only (view 1, not ended).
+		if ( 1 === $game_number ) {
+			$state = ( new GameState() )->get_public_state( $game_id );
+			$view  = isset( $state['current_view'] ) ? absint( $state['current_view'] ) : 0;
+			$ended = ! empty( $state['ended'] );
+
+			if ( ! $ended && 1 === $view ) {
+				return $this->with_how_to_play_heading( $html );
+			}
+		}
+
+		return $html;
 	}
 
 	/**
@@ -472,5 +485,17 @@ final class Shortcodes {
 		return '<div class="lk-game-message" role="status"><p>'
 			. esc_html( $message )
 			. '</p></div>';
+	}
+
+	/**
+	 * Prepend “How To Play The Game” (initial Game 1 Home screen only).
+	 *
+	 * @param string $html Shortcode body HTML.
+	 */
+	private function with_how_to_play_heading( string $html ): string {
+		return '<h2 class="lk-how-to-play">'
+			. esc_html__( 'How To Play The Game', 'local-knowledge' )
+			. '</h2>'
+			. $html;
 	}
 }

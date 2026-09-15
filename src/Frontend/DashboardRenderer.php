@@ -45,7 +45,9 @@ final class DashboardRenderer {
 	 */
 	public function render(): string {
 		if ( ! is_user_logged_in() ) {
-			return '<div class="lk-dashboard lk-dashboard--guest"><p>'
+			return '<div class="lk-dashboard lk-dashboard--guest">'
+				. '<h2 class="lk-how-to-play">' . esc_html__( 'How To Play The Game', 'local-knowledge' ) . '</h2>'
+				. '<p>'
 				. esc_html__( 'Please log in to view your Dashboard.', 'local-knowledge' )
 				. '</p></div>';
 		}
@@ -76,6 +78,7 @@ final class DashboardRenderer {
 		ob_start();
 		?>
 		<div class="lk-dashboard lk-dashboard--player">
+			<h2 class="lk-how-to-play"><?php esc_html_e( 'How To Play The Game', 'local-knowledge' ); ?></h2>
 			<p class="lk-dashboard__name">
 				<?php
 				printf(
