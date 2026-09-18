@@ -20,6 +20,11 @@ defined( 'ABSPATH' ) || exit;
 final class DashboardRenderer {
 
 	/**
+	 * Style handle for Dashboard layout.
+	 */
+	private const STYLE_HANDLE = 'lk-dashboard';
+
+	/**
 	 * Permanent results.
 	 */
 	private PlayerResultRepository $results;
@@ -44,13 +49,25 @@ final class DashboardRenderer {
 	 * Render Dashboard foundation HTML.
 	 */
 	public function render(): string {
+		$this->enqueue_assets();
+
 		if ( ! is_user_logged_in() ) {
-			return '<div class="lk-dashboard lk-dashboard--guest">'
-				. '<h2 class="lk-how-to-play">' . esc_html__( 'How To Play The Game', 'local-knowledge' ) . '</h2>'
-				. HowToPlay::instructions_html()
-				. '<p>'
-				. esc_html__( 'Please log in to view your Dashboard.', 'local-knowledge' )
-				. '</p></div>';
+			ob_start();
+			wp_print_styles( self::STYLE_HANDLE );
+			?>
+			<div class="lk-dashboard lk-dashboard--guest">
+				<div class="lk-dashboard__how-to-play">
+					<h2 class="lk-how-to-play"><?php esc_html_e( 'How To Play The Game', 'local-knowledge' ); ?></h2>
+					<?php echo HowToPlay::instructions_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper returns escaped HTML. ?>
+				</div>
+				<p class="lk-dashboard__login-prompt">
+					<?php esc_html_e( 'Please log in to view your Dashboard.', 'local-knowledge' ); ?>
+				</p>
+			</div>
+			<?php
+			$html = ob_get_clean();
+
+			return is_string( $html ) ? $html : '';
 		}
 
 		$user_id = get_current_user_id();
@@ -77,50 +94,53 @@ final class DashboardRenderer {
 		}
 
 		ob_start();
+		wp_print_styles( self::STYLE_HANDLE );
 		?>
 		<div class="lk-dashboard lk-dashboard--player">
-			<h2 class="lk-how-to-play"><?php esc_html_e( 'How To Play The Game', 'local-knowledge' ); ?></h2>
-			<?php echo HowToPlay::instructions_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper returns escaped HTML. ?>
-			<p class="lk-dashboard__name">
-				<?php
-				printf(
-					/* translators: %s: player display name */
-					esc_html__( 'Player: %s', 'local-knowledge' ),
-					esc_html( $name )
-				);
-				?>
-			</p>
-			<p class="lk-dashboard__total">
-				<?php
-				printf(
-					/* translators: %d: total points */
-					esc_html__( 'Total score: %d points', 'local-knowledge' ),
-					$total
-				);
-				?>
-			</p>
-			<p class="lk-dashboard__completed">
-				<?php
-				printf(
-					/* translators: %d: number of completed games */
-					esc_html__( 'Completed Games: %d', 'local-knowledge' ),
-					$count
-				);
-				?>
-			</p>
-			<p class="lk-dashboard__current">
-				<?php
-				printf(
-					/* translators: %s: current game number or status */
-					esc_html__( 'Current Game: %s', 'local-knowledge' ),
-					esc_html( $current_label )
-				);
-				?>
-			</p>
+			<div class="lk-dashboard__score">
+				<p class="lk-dashboard__name">
+					<strong><?php esc_html_e( 'Player:', 'local-knowledge' ); ?></strong>
+					<?php echo esc_html( $name ); ?>
+				</p>
+				<p class="lk-dashboard__total">
+					<strong><?php esc_html_e( 'Total score:', 'local-knowledge' ); ?></strong>
+					<?php
+					printf(
+						/* translators: %d: total points */
+						esc_html__( '%d points', 'local-knowledge' ),
+						$total
+					);
+					?>
+				</p>
+				<p class="lk-dashboard__completed">
+					<strong><?php esc_html_e( 'Completed Games:', 'local-knowledge' ); ?></strong>
+					<?php echo esc_html( (string) $count ); ?>
+				</p>
+				<p class="lk-dashboard__current">
+					<strong><?php esc_html_e( 'Current Game:', 'local-knowledge' ); ?></strong>
+					<?php echo esc_html( $current_label ); ?>
+				</p>
+			</div>
+			<div class="lk-dashboard__how-to-play">
+				<h2 class="lk-how-to-play"><?php esc_html_e( 'How To Play The Game', 'local-knowledge' ); ?></h2>
+				<?php echo HowToPlay::instructions_html(); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- helper returns escaped HTML. ?>
+			</div>
 		</div>
 		<?php
 		$html = ob_get_clean();
 
 		return is_string( $html ) ? $html : '';
+	}
+
+	/**
+	 * Enqueue Dashboard layout styles.
+	 */
+	private function enqueue_assets(): void {
+		wp_enqueue_style(
+			self::STYLE_HANDLE,
+			LK_PLUGIN_URL . 'assets/css/dashboard.css',
+			array(),
+			LK_VERSION
+		);
 	}
 }

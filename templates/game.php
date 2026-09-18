@@ -306,7 +306,7 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 
 			<?php if ( $show_registration && '' !== $registration_prompt ) : ?>
 				<p class="lk-game__registration-prompt">
-					<?php echo esc_html( $registration_prompt ); ?>
+					<strong><?php echo esc_html( $registration_prompt ); ?></strong>
 				</p>
 			<?php endif; ?>
 		</section>

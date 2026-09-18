@@ -1,5 +1,14 @@
 /* How To Play — Watch button and portrait video modal only. */
 
+.lk-how-to-play-copy {
+	font-size: 14px;
+	line-height: 1.5;
+}
+
+.lk-how-to-play-copy p {
+	font-size: inherit;
+}
+
 .lk-how-to-play-actions {
 	margin: 1rem 0 0;
 }

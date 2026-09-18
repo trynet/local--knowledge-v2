@@ -1,0 +1,41 @@
+/* Dashboard layout only — does not affect Home/Game screens. */
+
+.lk-dashboard {
+	box-sizing: border-box;
+	width: 100%;
+	max-width: 100%;
+}
+
+.lk-dashboard--player {
+	box-sizing: border-box;
+	width: 50%;
+	max-width: 100%;
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+	gap: 1.5rem;
+	align-items: start;
+}
+
+.lk-dashboard__score,
+.lk-dashboard__how-to-play {
+	min-width: 0;
+}
+
+.lk-dashboard__score p {
+	margin: 0 0 0.65rem;
+}
+
+.lk-dashboard__score p:last-child {
+	margin-bottom: 0;
+}
+
+.lk-dashboard__score strong {
+	font-weight: 700;
+}
+
+@media (max-width: 720px) {
+	.lk-dashboard--player {
+		width: 100%;
+		grid-template-columns: minmax(0, 1fr);
+	}
+}

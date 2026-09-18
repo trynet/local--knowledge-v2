@@ -77,10 +77,12 @@ final class HowToPlay {
 		ob_start();
 		wp_print_styles( self::STYLE_HANDLE );
 		?>
-		<p><?php esc_html_e( 'You’ll see a photo of a location and four possible answers. Choose the location you think is correct and click Submit.', 'local-knowledge' ); ?></p>
-		<p><?php esc_html_e( 'A correct answer on the first photo earns 4 points. If you’re wrong, another photo is revealed and the possible score drops by one point with each additional photo.', 'local-knowledge' ); ?></p>
-		<p><?php esc_html_e( 'After all four photos have been revealed, you can continue guessing or choose I Don’t Know. An incorrect final answer or I Don’t Know earns 0 points.', 'local-knowledge' ); ?></p>
-		<p><?php esc_html_e( 'There are 10 games. Your scores from all 10 games are added together for your final score.', 'local-knowledge' ); ?></p>
+		<div class="lk-how-to-play-copy">
+			<p><?php esc_html_e( 'You’ll see a photo of a location and four possible answers. Choose the location you think is correct and click Submit.', 'local-knowledge' ); ?></p>
+			<p><?php esc_html_e( 'A correct answer on the first photo earns 4 points. If you’re wrong, another photo is revealed and the possible score drops by one point with each additional photo.', 'local-knowledge' ); ?></p>
+			<p><?php esc_html_e( 'After all four photos have been revealed, you can continue guessing or choose I Don’t Know. An incorrect final answer or I Don’t Know earns 0 points.', 'local-knowledge' ); ?></p>
+			<p><?php esc_html_e( 'There are 10 games. Your scores from all 10 games are added together for your final score.', 'local-knowledge' ); ?></p>
+		</div>
 		<p class="lk-how-to-play-actions">
 			<button
 				type="button"
