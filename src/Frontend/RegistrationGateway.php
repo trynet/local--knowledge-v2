@@ -425,6 +425,12 @@ final class RegistrationGateway {
 			$play = home_url( '/' );
 		}
 
+		// Game 1 completion flash may leave #lk-game-title on the Play URL.
+		// Same-path redirect into Game 2 can retain that fragment; force top of page.
+		if ( ! str_contains( $play, '#' ) ) {
+			$play .= '#';
+		}
+
 		wp_safe_redirect( $play, 303 );
 		exit;
 	}

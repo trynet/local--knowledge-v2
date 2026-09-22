@@ -119,6 +119,11 @@ final class GameRenderer {
 
 		$url = (string) $prepared['clean_game_url'];
 
+		// Keep the Game N title fragment after stripping the flash query arg.
+		if ( ! str_contains( $url, '#' ) ) {
+			$url .= '#lk-game-title';
+		}
+
 		return '<script>(function () {'
 			. 'if (!window.history || typeof window.history.replaceState !== "function") { return; }'
 			. 'window.history.replaceState(null, document.title, ' . wp_json_encode( $url ) . ');'

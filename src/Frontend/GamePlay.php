@@ -326,6 +326,9 @@ final class GamePlay {
 			$redirect = add_query_arg( self::COMPLETE_QUERY, (string) $game_number, $redirect );
 		}
 
+		// Land at the Game N title after the POST → 303 → GET reload.
+		$redirect .= '#lk-game-title';
+
 		wp_safe_redirect( $redirect, 303 );
 		exit;
 	}

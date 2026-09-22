@@ -154,7 +154,7 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 	<?php endif; ?>
 
 	<header class="lk-game__header">
-		<h1 class="lk-game__title">
+		<h1 class="lk-game__title" id="lk-game-title">
 			<?php
 			echo esc_html(
 				sprintf(

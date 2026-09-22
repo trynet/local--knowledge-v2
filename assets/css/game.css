@@ -658,6 +658,23 @@
 	border-color: #135e96;
 }
 
+/* Registration form only: 15px gap between each label and its input. */
+.lk-game__registration-form .lk-game__field {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	column-gap: 15px;
+}
+
+.lk-game__registration-form .lk-game__field label {
+	flex: 0 0 auto;
+}
+
+.lk-game__registration-form .lk-game__field input {
+	flex: 1 1 auto;
+	min-width: 0;
+}
+
 @media (max-width: 480px) {
 	.lk-game {
 		width: min(100% - 1rem, 40rem);
@@ -671,5 +688,11 @@
 
 	.lk-game__comparison-grid {
 		grid-template-columns: 1fr;
+	}
+
+	.lk-game__registration-form .lk-game__field {
+		flex-direction: column;
+		align-items: stretch;
+		column-gap: 0;
 	}
 }
