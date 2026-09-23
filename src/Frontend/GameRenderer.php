@@ -346,6 +346,16 @@ final class GameRenderer {
 			$proceed_next_game_number = $game_number + 1;
 		}
 
+		$show_feedback_button = $show_completion && ! empty( $view['show_feedback_button'] );
+		$feedback_button_url  = isset( $view['feedback_button_url'] )
+			? esc_url_raw( (string) $view['feedback_button_url'] )
+			: '';
+
+		if ( $show_feedback_button && ( '' === $feedback_button_url || 10 !== $game_number ) ) {
+			$show_feedback_button = false;
+			$feedback_button_url  = '';
+		}
+
 		$total_games = 10;
 
 		return array(
@@ -392,6 +402,8 @@ final class GameRenderer {
 			'show_proceed_next_game'          => $show_proceed_next_game,
 			'proceed_next_game_url'           => $proceed_next_game_url,
 			'proceed_next_game_number'        => $proceed_next_game_number,
+			'show_feedback_button'            => $show_feedback_button,
+			'feedback_button_url'             => $feedback_button_url,
 		);
 	}
 

@@ -331,6 +331,11 @@ final class Shortcodes {
 			$overlay['proceed_next_game_number'] = $game_number + 1;
 		}
 
+		if ( 10 === $game_number ) {
+			$overlay['show_feedback_button'] = true;
+			$overlay['feedback_button_url']  = home_url( '/feedback/' );
+		}
+
 		if ( GameState::VIEW_COMPARISON === $view ) {
 			$overlay['show_comparison']   = true;
 			$overlay['show_large_image']  = false;

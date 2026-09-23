@@ -39,6 +39,9 @@ final class AuthNav {
 	public function register(): void {
 		add_filter( 'pre_render_block', array( $this, 'maybe_enter_header' ), 10, 2 );
 		add_filter( 'render_block_core/template-part', array( $this, 'leave_header' ), 10, 1 );
+		// Page List builds every page as one HTML string (not per-item render_block).
+		add_filter( 'get_pages', array( $this, 'exclude_feedback_from_header_page_list' ), 10, 2 );
+		add_filter( 'render_block_core/navigation', array( $this, 'strip_feedback_from_navigation' ), 9, 1 );
 		add_filter( 'render_block_core/navigation', array( $this, 'inject_auth_item' ), 10, 1 );
 		add_filter( 'logout_redirect', array( $this, 'append_logged_out_flag' ), 10, 3 );
 	}
@@ -69,6 +72,123 @@ final class AuthNav {
 		$this->in_header = false;
 
 		return $content;
+	}
+
+	/**
+	 * Keep the Feedback page out of automatic Page List markup in the header.
+	 *
+	 * core/page-list calls get_pages() and emits all items as one HTML string;
+	 * individual pages never pass through render_block as navigation-link /
+	 * page-list-item, which is why per-item HTML filters cannot remove Feedback.
+	 *
+	 * Scoped to header rendering only so other get_pages() consumers are unchanged.
+	 *
+	 * @param array<int, \WP_Post>|false $pages Pages from get_pages().
+	 * @param array<string, mixed>       $args  get_pages() arguments.
+	 * @return array<int, \WP_Post>|false
+	 */
+	public function exclude_feedback_from_header_page_list( $pages, $args ) {
+		unset( $args );
+
+		if ( ! $this->in_header || ! is_array( $pages ) || array() === $pages ) {
+			return $pages;
+		}
+
+		$feedback_id = $this->feedback_page_id();
+
+		if ( $feedback_id <= 0 ) {
+			return $pages;
+		}
+
+		$filtered = array();
+
+		foreach ( $pages as $page ) {
+			if ( $page instanceof \WP_Post && (int) $page->ID === $feedback_id ) {
+				continue;
+			}
+
+			$filtered[] = $page;
+		}
+
+		return $filtered;
+	}
+
+	/**
+	 * Remove any remaining Feedback list item from header Navigation HTML.
+	 *
+	 * Covers a manually added navigation-link to /feedback/ in addition to Page List.
+	 *
+	 * @param string $content Rendered navigation HTML.
+	 */
+	public function strip_feedback_from_navigation( string $content ): string {
+		if ( ! $this->in_header || '' === $content ) {
+			return $content;
+		}
+
+		return $this->strip_feedback_list_items( $content );
+	}
+
+	/**
+	 * Published Feedback page ID, or 0 when the page is missing.
+	 */
+	private function feedback_page_id(): int {
+		$page = get_page_by_path( 'feedback' );
+
+		return ( $page instanceof \WP_Post && 'publish' === $page->post_status )
+			? (int) $page->ID
+			: 0;
+	}
+
+	/**
+	 * Whether a URL points at the site Feedback page (/feedback).
+	 */
+	private function is_feedback_url( string $url ): bool {
+		$target = wp_parse_url( home_url( '/feedback/' ) );
+		$parsed = wp_parse_url( $url );
+
+		if ( ! is_array( $target ) || ! is_array( $parsed ) ) {
+			return false;
+		}
+
+		$target_path = untrailingslashit( strtolower( (string) ( $target['path'] ?? '/feedback' ) ) );
+		$parsed_path = untrailingslashit( strtolower( (string) ( $parsed['path'] ?? '' ) ) );
+
+		if ( '' === $parsed_path || $target_path !== $parsed_path ) {
+			return false;
+		}
+
+		$target_host = strtolower( (string) ( $target['host'] ?? '' ) );
+		$parsed_host = strtolower( (string) ( $parsed['host'] ?? '' ) );
+
+		// Relative paths and same-host absolute URLs both match.
+		return '' === $parsed_host || $parsed_host === $target_host;
+	}
+
+	/**
+	 * Drop leaf <li> elements whose anchor points at /feedback/.
+	 *
+	 * Only matches items without nested lists/items so parent submenu markup is untouched.
+	 *
+	 * @param string $html Navigation HTML.
+	 */
+	private function strip_feedback_list_items( string $html ): string {
+		if ( ! preg_match( '/href\s*=/i', $html ) ) {
+			return $html;
+		}
+
+		return (string) preg_replace_callback(
+			'/<li\b[^>]*>(?:(?!<li\b|<ul\b).)*?<\/li>/is',
+			function ( array $matches ): string {
+				$item = $matches[0];
+
+				if ( ! preg_match( '/href=(["\'])([^"\']+)\1/i', $item, $href_match ) ) {
+					return $item;
+				}
+
+				return $this->is_feedback_url( (string) $href_match[2] ) ? '' : $item;
+			},
+			$html
+		);
 	}
 
 	/**

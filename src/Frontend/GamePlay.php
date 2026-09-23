@@ -503,6 +503,11 @@ final class GamePlay {
 			$extras['proceed_next_game_number']  = $next;
 		}
 
+		if ( is_user_logged_in() && 10 === $game_number ) {
+			$extras['show_feedback_button'] = true;
+			$extras['feedback_button_url']  = home_url( '/feedback/' );
+		}
+
 		return $extras;
 	}
 }

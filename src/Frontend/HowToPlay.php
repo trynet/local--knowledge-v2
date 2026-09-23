@@ -27,21 +27,15 @@ final class HowToPlay {
 	public const SCRIPT_HANDLE = 'lk-how-to-play';
 
 	/**
-	 * Relative path under the uploads base URL.
+	 * Absolute How To Play video URL (staging and live).
 	 */
-	private const VIDEO_RELATIVE_PATH = '2026/09/InstructionVideo.mp4';
+	private const VIDEO_URL = 'https://budk33.sg-host.com/wp-content/uploads/2026/09/InstructionVideo.mp4';
 
 	/**
-	 * Video URL from the WordPress uploads directory (no hard-coded host).
+	 * Fixed How To Play video URL.
 	 */
 	public static function video_url(): string {
-		$uploads = wp_upload_dir();
-
-		if ( ! empty( $uploads['error'] ) || empty( $uploads['baseurl'] ) ) {
-			return '';
-		}
-
-		return trailingslashit( (string) $uploads['baseurl'] ) . self::VIDEO_RELATIVE_PATH;
+		return self::VIDEO_URL;
 	}
 
 	/**

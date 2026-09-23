@@ -92,6 +92,8 @@ $historical_information = isset( $historical_information ) ? (string) $historica
 $show_proceed_next_game = ! empty( $show_proceed_next_game );
 $proceed_next_game_url  = isset( $proceed_next_game_url ) ? (string) $proceed_next_game_url : '';
 $proceed_next_game_number = isset( $proceed_next_game_number ) ? (int) $proceed_next_game_number : 0;
+$show_feedback_button = ! empty( $show_feedback_button );
+$feedback_button_url  = isset( $feedback_button_url ) ? (string) $feedback_button_url : '';
 $total_games = isset( $total_games ) ? max( 1, (int) $total_games ) : 10;
 $show_post_registration = ! empty( $show_post_registration );
 $post_registration_title = isset( $post_registration_title ) ? (string) $post_registration_title : '';
@@ -323,6 +325,14 @@ $game_2_unavailable     = isset( $game_2_unavailable ) ? (string) $game_2_unavai
 						)
 					);
 					?>
+				</a>
+			</p>
+		<?php endif; ?>
+
+		<?php if ( $show_feedback_button && '' !== $feedback_button_url ) : ?>
+			<p class="lk-game__proceed lk-game__proceed--feedback">
+				<a class="lk-game__submit lk-game__submit--proceed" href="<?php echo esc_url( $feedback_button_url ); ?>">
+					<?php esc_html_e( 'Please Provide Feedback', 'local-knowledge' ); ?>
 				</a>
 			</p>
 		<?php endif; ?>
